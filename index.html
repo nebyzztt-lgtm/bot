@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BankLeads | Panel de Venta de Leads Bancarios</title>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #08090d;
+      --sidebar-bg: #0c0e14;
+      --card-bg: #10131b;
+      --card-hover: #141823;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-red: rgba(239, 68, 68, 0.22);
+      --border-red-hover: rgba(239, 68, 68, 0.55);
+      --red: #ef4444;
+      --red-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      --red-glow: 0 0 20px -3px rgba(239, 68, 68, 0.2);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --green: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 100% 0%, rgba(239, 68, 68, 0.06) 0px, transparent 40%),
+        radial-gradient(at 0% 100%, rgba(239, 68, 68, 0.03) 0px, transparent 40%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e2330; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
+    /* Header */
+    header {
+      height: 62px;
+      background: rgba(12, 14, 20, 0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--red-gradient);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+
+    /* Main 2-Column Layout */
+    .app-body {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      flex: 1;
+      min-height: calc(100vh - 62px);
+    }
+
+    /* Sidebar: Bank List */
+    aside.bank-sidebar {
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-section-title {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 700;
+      padding: 6px 10px 10px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .bank-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .bank-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+    }
+
+    .bank-item.active {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: var(--border-red);
+      color: #fff;
+      font-weight: 600;
+      border-left: 3px solid var(--red);
+    }
+
+    .bank-item.active .bank-pill {
+      background: rgba(239, 68, 68, 0.25);
+      color: #fff;
+    }
+
+    .bank-icon-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .bank-pill {
+      margin-left: auto;
+      font-size: 0.7rem;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 7px;
+      border-radius: 99px;
+      color: var(--text-dim);
+    }
+
+    /* Content Area */
+    main.content-wrapper {
+      padding: 22px 26px;
+      overflow-y: auto;
+    }
+
+    /* Top Search & Filter Strip */
+    .search-strip {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px 11px 40px;
+      color: #fff;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+    }
+
+    .product-chip {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 13px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .product-chip:hover {
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .product-chip.active {
+      background: rgba(239, 68, 68, 0.14);
+      border-color: var(--border-red);
+      color: #f87171;
+      font-weight: 600;
+    }
+
+    /* Lead Card */
+    .leads-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+    .lead-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .lead-card:hover {
+      border-color: var(--border-red-hover);
+      box-shadow: var(--red-glow);
+      transform: translateY(-2px);
+    }
+
+    .lead-tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--border-red);
+      color: #f87171;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .lead-details-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.77rem;
+      margin: 10px 0 14px 0;
+    }
+
+    /* Buttons */
+    .btn-buy {
+      background: var(--red-gradient);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+      transition: all 0.15s ease;
+    }
+    .btn-buy:hover {
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: 0.15s ease;
+    }
+    .btn-secondary:hover {
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 4, 7, 0.75);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    /* Toast */
+    #toast-box {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast-item {
+      pointer-events: auto;
+      background: #11141e;
+      border: 1px solid var(--border-red);
+      border-left: 3px solid var(--red);
+      padding: 10px 16px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.82rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app-body {
+        grid-template-columns: 1fr;
+      }
+      aside.bank-sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 10px 14px;
+        gap: 8px;
+      }
+      .sidebar-section-title { display: none; }
+      .bank-item {
+        white-space: nowrap;
+        padding: 6px 12px;
+      }
+      main.content-wrapper {
+        padding: 14px;
+      }
+      .hide-mobile { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== HEADER ==================== -->
+  <header>
+    <!-- Brand -->
+    <div class="brand-wrap">
+      <div class="brand-icon">
+        <!-- Modern financial cube icon -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+      </div>
+      <div>
+        <div style="font-weight: 800; font-size: 0.98rem; letter-spacing: -0.02em;">
+          BANK<span style="color: var(--red);">LEADS</span>
+        </div>
+        <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: -2px;" class="hide-mobile">
+          Plataforma de Compra y Venta de Leads Financieros
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Nav / Saldo / Perfil -->
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <!-- Tab Mis Comprados -->
+      <button onclick="togglePurchasedView()" id="btn-toggle-purchased" class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem;">
+        <span>Mis Leads Adquiridos</span>
+        <span id="purchased-badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 1px 6px; border-radius: 99px; font-weight: 700; font-size: 0.7rem;">2</span>
+      </button>
+
+      <!-- Saldo -->
+      <div onclick="openDepositModal()" style="display: flex; align-items: center; gap: 6px; background: rgba(239, 68, 68, 0.08); border: 1px solid var(--border-red); padding: 5px 12px; border-radius: 99px; cursor: pointer;" title="Recargar Saldo">
+        <span style="font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase;">Saldo:</span>
+        <span style="font-size: 0.88rem; font-weight: 700; color: #fff;" class="mono" id="balance-display">2.450,00 €</span>
+        <span style="color: var(--red); font-size: 0.8rem; font-weight: 700;">+</span>
+      </div>
+
+      <!-- Avatar -->
+      <div style="display: flex; align-items: center; gap: 8px;" class="hide-mobile">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: #1c2130; border: 1px solid var(--border-red); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: #fff;">
+          PC
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2-COLUMN LAYOUT ==================== -->
+  <div class="app-body">
+
+    <!-- ==================== LATERAL: BANCOS CON SUS ICONOS ==================== -->
+    <aside class="bank-sidebar">
+      <div class="sidebar-section-title">
+        <span>Bancos Disponibles</span>
+        <span style="font-size: 0.65rem; color: var(--red);">10 Entidades</span>
+      </div>
+
+      <!-- Todos -->
+      <div class="bank-item active" onclick="selectBank('todos', this)">
+        <div class="bank-icon-badge" style="background: rgba(255,255,255,0.08); color: #fff;">
+          🏛️
+        </div>
+        <span>Todos los Bancos</span>
+        <span class="bank-pill" id="count-todos">15</span>
+      </div>
+
+      <!-- Santander -->
+      <div class="bank-item" onclick="selectBank('Santander', this)">
+        <div class="bank-icon-badge" style="background: #ec0000; color: #fff;">
+          S
+        </div>
+        <span>Banco Santander</span>
+        <span class="bank-pill">3</span>
+      </div>
+
+      <!-- BBVA -->
+      <div class="bank-item" onclick="selectBank('BBVA', this)">
+        <div class="bank-icon-badge" style="background: #004481; color: #fff;">
+          B
+        </div>
+        <span>BBVA</span>
+        <span class="bank-pill">3</span>
+      </div>
+
+      <!-- CaixaBank -->
+      <div class="bank-item" onclick="selectBank('CaixaBank', this)">
+        <div class="bank-icon-badge" style="background: #007eae; color: #fff;">
+          ★
+        </div>
+        <span>CaixaBank</span>
+        <span class="bank-pill">2</span>
+      </div>
+
+      <!-- Sabadell -->
+      <div class="bank-item" onclick="selectBank('Sabadell', this)">
+        <div class="bank-icon-badge" style="background: #006dff; color: #fff;">
+          BS
+        </div>
+        <span>Banco Sabadell</span>
+        <span class="bank-pill">2</span>
+      </div>
+
+      <!-- Bankinter -->
+      <div class="bank-item" onclick="selectBank('Bankinter', this)">
+        <div class="bank-icon-badge" style="background: #ff6600; color: #fff;">
+          bk
+        </div>
+        <span>Bankinter</span>
+        <span class="bank-pill">2</span>
+      </div>
+
+      <!-- ING -->
+      <div class="bank-item" onclick="selectBank('ING', this)">
+        <div class="bank-icon-badge" style="background: #ff6200; color: #fff;">
+          🦁
+        </div>
+        <span>ING Direct</span>
+        <span class="bank-pill">2</span>
+      </div>
+
+      <!-- Unicaja -->
+      <div class="bank-item" onclick="selectBank('Unicaja', this)">
+        <div class="bank-icon-badge" style="background: #008453; color: #fff;">
+          U
+        </div>
+        <span>Unicaja Banco</span>
+        <span class="bank-pill">1</span>
+      </div>
+
+      <!-- Kutxabank -->
+      <div class="bank-item" onclick="selectBank('Kutxabank', this)">
+        <div class="bank-icon-badge" style="background: #d4001a; color: #fff;">
+          K
+        </div>
+        <span>Kutxabank</span>
+        <span class="bank-pill">1</span>
+      </div>
+
+      <!-- Abanca -->
+      <div class="bank-item" onclick="selectBank('Abanca', this)">
+        <div class="bank-icon-badge" style="background: #007a87; color: #fff;">
+          A
+        </div>
+        <span>Abanca</span>
+        <span class="bank-pill">1</span>
+      </div>
+    </aside>
+
+    <!-- ==================== MAIN CONTENT: BUSCADOR & LEADS ==================== -->
+    <main class="content-wrapper">
+
+      <!-- VIEW 1: MARKETPLACE FEED -->
+      <section id="view-marketplace">
+        <!-- Search strip -->
+        <div class="search-strip">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <!-- Buscador general -->
+            <div class="search-box">
+              <input type="text" id="searchInput" onkeyup="filterLeads()" placeholder="Buscar por cliente, localidad, DNI, importe o banco..." class="search-input">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2" style="position: absolute; left: 14px; top: 13px;">
+                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+
+            <!-- Ordenación -->
+            <select id="sortSelect" onchange="filterLeads()" style="background: var(--card-bg); border: 1px solid var(--border); color: #cbd5e1; border-radius: 10px; padding: 11px 12px; font-size: 0.8rem; outline: none;">
+              <option value="amount-desc">Mayor Importe Solicitado</option>
+              <option value="amount-asc">Menor Importe</option>
+              <option value="score">Mayor Scoring BANT</option>
+              <option value="price-asc">Precio Más Bajo</option>
+            </select>
+          </div>
+
+          <!-- Píldoras de producto financiero -->
+          <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px;">
+            <button class="product-chip active" onclick="setProductFilter('todos', this)">Todos los Productos</button>
+            <button class="product-chip" onclick="setProductFilter('hipoteca', this)">🏦 Hipotecas</button>
+            <button class="product-chip" onclick="setProductFilter('reunificacion', this)">🔄 Reunificación Deudas</button>
+            <button class="product-chip" onclick="setProductFilter('prestamo', this)">⚡ Préstamos Personales</button>
+            <button class="product-chip" onclick="setProductFilter('pyme', this)">💼 Financiación Pymes / ICO</button>
+          </div>
+        </div>
+
+        <!-- Filter Status Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 0.8rem; color: var(--text-dim);">
+          <div>
+            Entidad: <span id="active-bank-label" style="color: #fff; font-weight: 600;">Todos los Bancos</span>
+            &bull; <span id="leads-count-label" style="color: var(--red); font-weight: 700;">15</span> solicitudes activas
+          </div>
+          <div style="font-size: 0.72rem; color: var(--green);">
+            ✓ Contactos verificados con OTP
+          </div>
+        </div>
+
+        <!-- Leads Grid -->
+        <div class="leads-grid" id="leads-grid-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- VIEW 2: MIS LEADS ADQUIRIDOS (CARTERA) -->
+      <section id="view-purchased" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #fff;">Mis Leads Bancarios Adquiridos</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Contactos con teléfono, email y datos completos listos para gestión o exportación.</p>
+          </div>
+          <button onclick="togglePurchasedView()" class="btn-secondary" style="font-size: 0.8rem;">
+            ← Volver al Mercado
+          </button>
+        </div>
+
+        <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; padding: 8px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border); color: var(--text-dim); text-align: left;">
+                <th style="padding: 10px 12px;">Fecha Compra</th>
+                <th style="padding: 10px 12px;">Titular Desbloqueado</th>
+                <th style="padding: 10px 12px;">Teléfono</th>
+                <th style="padding: 10px 12px;">Operación</th>
+                <th style="padding: 10px 12px;">Importe</th>
+                <th style="padding: 10px 12px;">Banco Objetivo</th>
+                <th style="padding: 10px 12px; text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="purchased-table-body">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODAL: COMPRA DE LEAD ==================== -->
+  <div class="modal-overlay" id="buyModal">
+    <div style="background: #11141c; border: 1px solid var(--border-red-hover); width: 420px; max-width: 95%; border-radius: 14px; padding: 22px; box-shadow: 0 25px 50px rgba(0,0,0,0.8), var(--red-glow);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span class="lead-tag" id="modal-bank-tag">Banco Santander</span>
+        <button onclick="closeModal('buyModal')" style="background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.3rem;">&times;</button>
+      </div>
+
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 4px;" id="modal-title">Hipoteca Fija 100%</h3>
+      <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 14px;" id="modal-desc">Madrid &bull; Solicitante con nómina indefinida</p>
+
+      <div style="background: #090a0f; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 0.8rem; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span style="color: var(--text-dim);">Importe Solicitado:</span>
+          <span style="font-weight: 700; color: #fff;" class="mono" id="modal-amount">225.000 €</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span style="color: var(--text-dim);">ASNEF / CIRBE:</span>
+          <span style="color: var(--green); font-weight: 600;">✓ Limpio (0 incidencias)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span style="color: var(--text-dim);">Exclusividad:</span>
+          <span style="color: #f87171; font-weight: 600;">100% Exclusivo</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);">
+          <span style="color: #fff; font-weight: 600;">Precio del Lead:</span>
+          <span style="color: var(--red); font-weight: 800; font-size: 1.05rem;" class="mono" id="modal-price">39,00 €</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button onclick="closeModal('buyModal')" class="btn-secondary" style="flex: 1; justify-content: center;">Cancelar</button>
+        <button onclick="confirmPurchase()" class="btn-buy" style="flex: 1.4; justify-content: center;">Comprar y Desbloquear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: RECARGA DE SALDO ==================== -->
+  <div class="modal-overlay" id="depositModal">
+    <div style="background: #11141c; border: 1px solid var(--border-red); width: 340px; border-radius: 14px; padding: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h4 style="color: #fff; font-size: 0.95rem;">Recargar Saldo de Compras</h4>
+        <button onclick="closeModal('depositModal')" style="background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem;">&times;</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <button onclick="addBalance(200)" class="btn-secondary" style="justify-content: center; font-weight: 700;">+ 200 €</button>
+        <button onclick="addBalance(500)" class="btn-secondary" style="justify-content: center; font-weight: 700;">+ 500 €</button>
+        <button onclick="addBalance(1000)" class="btn-buy" style="justify-content: center; font-weight: 700;">+ 1.000 €</button>
+        <button onclick="addBalance(2500)" class="btn-secondary" style="justify-content: center; font-weight: 700;">+ 2.500 €</button>
+      </div>
+      <p style="font-size: 0.7rem; color: var(--text-dim); text-align: center;">Factura con NIF emitida al instante.</p>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-box"></div>
+
+  <!-- ==================== JAVASCRIPT ==================== -->
+  <script>
+    // State
+    let userBalance = 2450.00;
+    let selectedBank = 'todos';
+    let selectedProduct = 'todos';
+    let targetLead = null;
+    let isPurchasedView = false;
+
+    // Bank Branding Colors
+    const bankColors = {
+      'Santander': '#ec0000',
+      'BBVA': '#004481',
+      'CaixaBank': '#007eae',
+      'Sabadell': '#006dff',
+      'Bankinter': '#ff6600',
+      'ING': '#ff6200',
+      'Unicaja': '#008453',
+      'Kutxabank': '#d4001a',
+      'Abanca': '#007a87'
+    };
+
+    // Bank Leads Dataset (Pure Lead Marketplace)
+    let leadsData = [
+      {
+        id: "BK-101",
+        bank: "Santander",
+        title: "Hipoteca Fija Primera Vivienda 100%",
+        product: "hipoteca",
+        productLabel: "🏦 Hipoteca Fija",
+        amount: 225000,
+        amountFormatted: "225.000 €",
+        city: "Madrid (Las Rozas)",
+        income: "3.400 €/m (Pareja funcionarios)",
+        score: 98,
+        price: 39.00,
+        phoneClean: "+34 612 884 102",
+        nameMasked: "Elena M. G.",
+        email: "elena.m@gmail.com",
+        date: "Hace 3 min"
+      },
+      {
+        id: "BK-102",
+        bank: "Santander",
+        title: "Préstamo Personal Coche Eléctrico",
+        product: "prestamo",
+        productLabel: "🚗 Préstamo Auto",
+        amount: 26000,
+        amountFormatted: "26.000 €",
+        city: "Sevilla (Nervión)",
+        income: "2.100 €/m (Indefinido)",
+        score: 92,
+        price: 26.00,
+        phoneClean: "+34 655 401 229",
+        nameMasked: "David S. R.",
+        email: "david.sr@outlook.es",
+        date: "Hace 12 min"
+      },
+      {
+        id: "BK-103",
+        bank: "Santander",
+        title: "Subrogación Hipoteca Mejora Tipo Fijo",
+        product: "hipoteca",
+        productLabel: "📉 Subrogación",
+        amount: 180000,
+        amountFormatted: "180.000 €",
+        city: "Zaragoza (Centro)",
+        income: "2.900 €/m",
+        score: 96,
+        price: 36.00,
+        phoneClean: "+34 639 990 124",
+        nameMasked: "Marcos T. L.",
+        email: "m.torres@gmail.com",
+        date: "Hace 25 min"
+      },
+      {
+        id: "BK-104",
+        bank: "BBVA",
+        title: "Préstamo Reforma Integral Vivienda",
+        product: "prestamo",
+        productLabel: "⚡ Préstamo Reforma",
+        amount: 32000,
+        amountFormatted: "32.000 €",
+        city: "Barcelona (Eixample)",
+        income: "2.800 €/m",
+        score: 94,
+        price: 28.00,
+        phoneClean: "+34 608 412 876",
+        nameMasked: "Patricia B. C.",
+        email: "patricia.bc@yahoo.es",
+        date: "Hace 5 min"
+      },
+      {
+        id: "BK-105",
+        bank: "BBVA",
+        title: "Hipoteca Joven Menores de 35 años",
+        product: "hipoteca",
+        productLabel: "🏦 Hipoteca Joven",
+        amount: 165000,
+        amountFormatted: "165.000 €",
+        city: "Málaga (Teatinos)",
+        income: "2.350 €/m (Ingeniero)",
+        score: 93,
+        price: 34.00,
+        phoneClean: "+34 670 119 554",
+        nameMasked: "Laura P. S.",
+        email: "laura.ps@gmail.com",
+        date: "Hace 18 min"
+      },
+      {
+        id: "BK-106",
+        bank: "BBVA",
+        title: "Línea de Financiación Pyme ICO",
+        product: "pyme",
+        productLabel: "💼 Préstamo Pyme",
+        amount: 85000,
+        amountFormatted: "85.000 €",
+        city: "Bilbao (Parque Tecnológico)",
+        income: "380.000 € facturación anual",
+        score: 97,
+        price: 48.00,
+        phoneClean: "+34 944 200 451",
+        nameMasked: "Transportes Norte SL",
+        email: "administracion@transportesnorte.es",
+        date: "Hace 40 min"
+      },
+      {
+        id: "BK-107",
+        bank: "CaixaBank",
+        title: "Reunificación de 4 Préstamos en 1",
+        product: "reunificacion",
+        productLabel: "🔄 Reunificación",
+        amount: 45000,
+        amountFormatted: "45.000 €",
+        city: "Valencia (Campanar)",
+        income: "2.200 €/m (Indefinido)",
+        score: 95,
+        price: 32.00,
+        phoneClean: "+34 654 301 988",
+        nameMasked: "Javier R. S.",
+        email: "javier.rs@gmail.com",
+        date: "Hace 8 min"
+      },
+      {
+        id: "BK-108",
+        bank: "CaixaBank",
+        title: "Hipoteca Mixta Casa con Parcela",
+        product: "hipoteca",
+        productLabel: "🏦 Hipoteca Mixta",
+        amount: 240000,
+        amountFormatted: "240.000 €",
+        city: "Tarragona",
+        income: "3.600 €/m",
+        score: 97,
+        price: 42.00,
+        phoneClean: "+34 620 901 340",
+        nameMasked: "Rosa M. V.",
+        email: "rosa.mv@hotmail.com",
+        date: "Hace 30 min"
+      },
+      {
+        id: "BK-109",
+        bank: "Sabadell",
+        title: "Préstamo Expansión Negocio Local",
+        product: "pyme",
+        productLabel: "💼 Crédito Pyme",
+        amount: 95000,
+        amountFormatted: "95.000 €",
+        city: "Alicante",
+        income: "420.000 € facturación",
+        score: 95,
+        price: 52.00,
+        phoneClean: "+34 965 330 219",
+        nameMasked: "Clínicas Levante SL",
+        email: "gerencia@clinicaslevante.com",
+        date: "Hace 15 min"
+      },
+      {
+        id: "BK-110",
+        bank: "Sabadell",
+        title: "Hipoteca Fija Tipo Bonificado",
+        product: "hipoteca",
+        productLabel: "🏦 Hipoteca Fija",
+        amount: 175000,
+        amountFormatted: "175.000 €",
+        city: "Girona",
+        income: "2.600 €/m",
+        score: 91,
+        price: 33.00,
+        phoneClean: "+34 688 120 449",
+        nameMasked: "Marc C. F.",
+        email: "marc.cf@gmail.com",
+        date: "Hace 52 min"
+      },
+      {
+        id: "BK-111",
+        bank: "Bankinter",
+        title: "Hipoteca Sin Comisiones ni Productos",
+        product: "hipoteca",
+        productLabel: "🏦 Hipoteca Fija",
+        amount: 210000,
+        amountFormatted: "210.000 €",
+        city: "Madrid (Chamberí)",
+        income: "4.100 €/m (Médico)",
+        score: 99,
+        price: 45.00,
+        phoneClean: "+34 677 341 902",
+        nameMasked: "David Serrano Morales",
+        email: "dr.serrano@hospital.es",
+        date: "Hace 20 min"
+      },
+      {
+        id: "BK-112",
+        bank: "Bankinter",
+        title: "Préstamo Eficiencia Energética / Placas",
+        product: "prestamo",
+        productLabel: "⚡ Préstamo Verde",
+        amount: 28000,
+        amountFormatted: "28.000 €",
+        city: "Toledo",
+        income: "2.300 €/m",
+        score: 93,
+        price: 27.00,
+        phoneClean: "+34 611 230 455",
+        nameMasked: "Alberto F. K.",
+        email: "alberto.toledo@gmail.com",
+        date: "Hace 44 min"
+      },
+      {
+        id: "BK-113",
+        bank: "ING",
+        title: "Hipoteca Naranja Fija 100% Online",
+        product: "hipoteca",
+        productLabel: "🏦 Hipoteca Online",
+        amount: 190000,
+        amountFormatted: "190.000 €",
+        city: "Valladolid",
+        income: "2.750 €/m",
+        score: 94,
+        price: 35.00,
+        phoneClean: "+34 699 874 120",
+        nameMasked: "Raúl G. M.",
+        email: "raul.gm@gmail.com",
+        date: "Hace 22 min"
+      },
+      {
+        id: "BK-114",
+        bank: "ING",
+        title: "Préstamo Consumo Nómina Instantáneo",
+        product: "prestamo",
+        productLabel: "🚗 Préstamo Rápido",
+        amount: 18000,
+        amountFormatted: "18.000 €",
+        city: "Salamanca",
+        income: "1.900 €/m",
+        score: 90,
+        price: 22.00,
+        phoneClean: "+34 644 112 908",
+        nameMasked: "Sonia L. P.",
+        email: "sonia.lp@hotmail.es",
+        date: "Hace 35 min"
+      },
+      {
+        id: "BK-115",
+        bank: "Unicaja",
+        title: "Hipoteca Vivienda Rural / Chalet",
+        product: "hipoteca",
+        productLabel: "🏦 Hipoteca Rústica",
+        amount: 140000,
+        amountFormatted: "140.000 €",
+        city: "Cádiz",
+        income: "2.250 €/m",
+        score: 92,
+        price: 30.00,
+        phoneClean: "+34 633 456 781",
+        nameMasked: "Manuel R. O.",
+        email: "manuel.ro@gmail.com",
+        date: "Hace 10 min"
+      }
+    ];
+
+    // Cartera de Leads Comprados
+    let purchasedLeads = [
+      {
+        id: "BK-092",
+        title: "Hipoteca Fija Subrogación",
+        client: "Carlos Domínguez López",
+        phone: "+34 611 445 902",
+        email: "carlos.dominguez@empresa.es",
+        bank: "Banco Santander",
+        amount: "195.000 €",
+        date: "28/09 09:12",
+        price: 38.00
+      },
+      {
+        id: "BK-089",
+        title: "Préstamo Pyme ICO",
+        client: "Servicios Digitales Ibéricos SL",
+        phone: "+34 914 300 211",
+        email: "facturacion@serviciosdigitales.es",
+        bank: "CaixaBank",
+        amount: "80.000 €",
+        date: "28/09 08:45",
+        price: 49.00
+      }
+    ];
+
+    // Filter and Render Leads Feed
+    function filterLeads() {
+      const search = (document.getElementById('searchInput').value || '').toLowerCase();
+      const sort = document.getElementById('sortSelect').value;
+
+      let list = leadsData.filter(item => {
+        const bankMatch = selectedBank === 'todos' || item.bank.toLowerCase() === selectedBank.toLowerCase();
+        const prodMatch = selectedProduct === 'todos' || item.product === selectedProduct;
+        const textMatch = item.title.toLowerCase().includes(search) ||
+                          item.city.toLowerCase().includes(search) ||
+                          item.bank.toLowerCase().includes(search) ||
+                          item.amountFormatted.includes(search);
+
+        return bankMatch && prodMatch && textMatch;
+      });
+
+      // Sorting
+      if (sort === 'amount-desc') list.sort((a, b) => b.amount - a.amount);
+      if (sort === 'amount-asc') list.sort((a, b) => a.amount - b.amount);
+      if (sort === 'score') list.sort((a, b) => b.score - a.score);
+      if (sort === 'price-asc') list.sort((a, b) => a.price - b.price);
+
+      const grid = document.getElementById('leads-grid-container');
+      const countLabel = document.getElementById('leads-count-label');
+      countLabel.textContent = list.length;
+
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-dim); background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
+            No se encontraron leads de bancos con los criterios seleccionados.
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = list.map(item => `
+        <div class="lead-card">
+          <div>
+            <!-- Header Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span class="lead-tag">
+                <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${bankColors[item.bank] || '#ef4444'};"></span>
+                ${item.bank} &bull; ${item.productLabel}
+              </span>
+              <span style="font-size: 0.7rem; color: var(--text-dim);">${item.date}</span>
+            </div>
+
+            <!-- Title -->
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 6px; line-height: 1.35;">
+              ${item.title}
+            </h4>
+
+            <!-- Amount -->
+            <div style="font-size: 1.35rem; font-weight: 800; color: var(--red); margin-bottom: 8px;" class="mono">
+              ${item.amountFormatted}
+            </div>
+
+            <!-- Lead Snapshot Box -->
+            <div class="lead-details-box">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="color: var(--text-dim);">Ubicación:</span>
+                <span style="color: #fff; font-weight: 500;">${item.city}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="color: var(--text-dim);">Ingresos Acreditados:</span>
+                <span style="color: #e2e8f0;">${item.income}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-dim);">Filtro ASNEF / Solvencia:</span>
+                <span style="color: var(--green); font-weight: 600;">✓ Sin incidencias (Score ${item.score}%)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Price & Buy -->
+          <div style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase;">Precio Lead</div>
+              <div style="font-size: 1.2rem; font-weight: 800; color: #fff;" class="mono">${item.price.toFixed(2)} €</div>
+            </div>
+
+            <button onclick="openBuyModal('${item.id}')" class="btn-buy">
+              Comprar Lead
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Select Bank from Lateral List
+    function selectBank(bank, el) {
+      if (isPurchasedView) togglePurchasedView();
+
+      document.querySelectorAll('.bank-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+      selectedBank = bank;
+
+      document.getElementById('active-bank-label').textContent = bank === 'todos' ? 'Todos los Bancos' : bank;
+      filterLeads();
+    }
+
+    // Product Chip Filter
+    function setProductFilter(product, el) {
+      document.querySelectorAll('.product-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      selectedProduct = product;
+      filterLeads();
+    }
+
+    // Buy Modal
+    function openBuyModal(leadId) {
+      const item = leadsData.find(l => l.id === leadId);
+      if (!item) return;
+      targetLead = item;
+
+      document.getElementById('modal-bank-tag').textContent = `${item.bank} • ${item.productLabel}`;
+      document.getElementById('modal-title').textContent = item.title;
+      document.getElementById('modal-desc').textContent = `${item.city} • ${item.income}`;
+      document.getElementById('modal-amount').textContent = item.amountFormatted;
+      document.getElementById('modal-price').textContent = `${item.price.toFixed(2)} €`;
+
+      document.getElementById('buyModal').classList.add('open');
+    }
+
+    function openDepositModal() {
+      document.getElementById('depositModal').classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function confirmPurchase() {
+      if (!targetLead) return;
+      if (userBalance < targetLead.price) {
+        showToast("Saldo insuficiente. Por favor realiza una recarga.");
+        closeModal('buyModal');
+        openDepositModal();
+        return;
+      }
+
+      // Deduct balance
+      userBalance -= targetLead.price;
+      document.getElementById('balance-display').textContent = `${userBalance.toFixed(2)} €`;
+
+      // Add to purchased list with revealed data
+      purchasedLeads.unshift({
+        id: targetLead.id,
+        title: targetLead.title,
+        client: targetLead.nameMasked.replace("M. G.", "Martínez Gómez").replace("S. R.", "Sánchez Ramos").replace("T. L.", "Torres Luque"),
+        phone: targetLead.phoneClean,
+        email: targetLead.email,
+        bank: targetLead.bank,
+        amount: targetLead.amountFormatted,
+        date: "Hoy " + new Date().toLocaleTimeString().slice(0, 5),
+        price: targetLead.price
+      });
+
+      // Remove from marketplace feed
+      leadsData = leadsData.filter(l => l.id !== targetLead.id);
+
+      closeModal('buyModal');
+      renderPurchasedTable();
+      filterLeads();
+
+      showToast(`¡Lead adquirido con éxito! Datos de contacto desbloqueados.`);
+    }
+
+    function addBalance(amt) {
+      userBalance += amt;
+      document.getElementById('balance-display').textContent = `${userBalance.toFixed(2)} €`;
+      closeModal('depositModal');
+      showToast(`+${amt} € añadidos a tu saldo correctamente.`);
+    }
+
+    // Toggle Cartera / Mis Leads
+    function togglePurchasedView() {
+      isPurchasedView = !isPurchasedView;
+      const viewFeed = document.getElementById('view-marketplace');
+      const viewPurchased = document.getElementById('view-purchased');
+      const btnToggle = document.getElementById('btn-toggle-purchased');
+
+      if (isPurchasedView) {
+        viewFeed.style.display = 'none';
+        viewPurchased.style.display = 'block';
+        btnToggle.style.background = 'rgba(239, 68, 68, 0.15)';
+        btnToggle.style.borderColor = 'var(--border-red)';
+        renderPurchasedTable();
+      } else {
+        viewFeed.style.display = 'block';
+        viewPurchased.style.display = 'none';
+        btnToggle.style.background = 'rgba(255, 255, 255, 0.05)';
+        btnToggle.style.borderColor = 'var(--border)';
+      }
+    }
+
+    function renderPurchasedTable() {
+      const tbody = document.getElementById('purchased-table-body');
+      const badge = document.getElementById('purchased-badge');
+      badge.textContent = purchasedLeads.length;
+
+      tbody.innerHTML = purchasedLeads.map(item => `
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 10px 12px; color: var(--text-dim);" class="mono">${item.date}</td>
+          <td style="padding: 10px 12px;">
+            <div style="font-weight: 700; color: #fff;">${item.client}</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">${item.email}</div>
+          </td>
+          <td style="padding: 10px 12px; color: var(--green); font-weight: 700;" class="mono">${item.phone}</td>
+          <td style="padding: 10px 12px;">${item.title}</td>
+          <td style="padding: 10px 12px; font-weight: 700; color: #fff;" class="mono">${item.amount}</td>
+          <td style="padding: 10px 12px;">
+            <span style="font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; background: rgba(255,255,255,0.06);">${item.bank}</span>
+          </td>
+          <td style="padding: 10px 12px; text-align: right;">
+            <button onclick="copyToClipboard('${item.phone}', '${item.client}')" class="btn-secondary" style="padding: 4px 8px; font-size: 0.72rem;">
+              Copiar Contacto
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function copyToClipboard(phone, name) {
+      navigator.clipboard.writeText(`${name} - ${phone}`);
+      showToast(`Contacto copiado al portapapeles (${phone})`);
+    }
+
+    // Toast
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      const toast = document.createElement('div');
+      toast.className = 'toast-item';
+      toast.textContent = msg;
+      box.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = '0.2s';
+        setTimeout(() => toast.remove(), 200);
+      }, 3200);
+    }
+
+    // Init
+    window.addEventListener('DOMContentLoaded', () => {
+      filterLeads();
+      renderPurchasedTable();
+    });
+  </script>
+</body>
+</html>
