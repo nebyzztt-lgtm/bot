@@ -864,8 +864,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🤖 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
         f"👋 <b><code>BIENVENIDO, {html.escape(nombre)}</code></b>\n\n"
         f"⚡ <b><code>COMANDOS DEL SISTEMA:</code></b>\n"
-        f"▫️ <b><code>/chk</code></b> ➔ <b><code>Iniciar chequeo de tarjetas</code></b>\n"
+        f"▫️ <b><code>/chk</code></b> ➔ <b><code>Iniciar chequeo (+100 tarjetas sin límite)</code></b>\n"
         f"▫️ <b><code>/chk &lt;tarjetas&gt;</code></b> ➔ <b><code>Chequeo rápido directo</code></b>\n"
+        f"▫️ <b><code>/gen &lt;10_dígitos&gt;</code></b> ➔ <b><code>Generar 30 tarjetas aleatorias</code></b>\n"
         f"▫️ <b><code>/url &lt;enlace&gt;</code></b> ➔ <b><code>Guardar o cambiar tu URL</code></b>\n"
         f"▫️ <b><code>/url</code></b> ➔ <b><code>Consultar tu URL configurada</code></b>\n"
         f"▫️ <b><code>/stop</code></b> ➔ <b><code>Detener el chequeo en curso</code></b>\n\n"
@@ -923,7 +924,7 @@ async def cmd_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
 async def iniciar_chequeo_usuario(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, chat_id: int, url: str, tarjetas: List[Tuple[str, str, str]]):
-    """Inicia el trabajo de chequeo en segundo plano."""
+    """Inicia el trabajo de chequeo en segundo plano sin límite estricto de tarjetas."""
     if user_id in active_jobs:
         await context.bot.send_message(
             chat_id=chat_id,
@@ -940,10 +941,6 @@ async def iniciar_chequeo_usuario(update: Update, context: ContextTypes.DEFAULT_
         )
         return
 
-    # Limitar a máximo 10 tarjetas
-    if len(tarjetas) > 10:
-        tarjetas = tarjetas[:10]
-
     stop_event = threading.Event()
     active_jobs[user_id] = {
         'stop_event': stop_event,
@@ -958,10 +955,70 @@ async def iniciar_chequeo_usuario(update: Update, context: ContextTypes.DEFAULT_
         daemon=True
     ).start()
 
+async def cmd_gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Comando /gen:
+    - /gen <10_caracteres>: Genera 30 tarjetas aleatorias con algoritmo Luhn a partir de esos 10 dígitos.
+    - /gen: Pide interactivamente los 10 dígitos si no se pasaron como argumento.
+    """
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    args = context.args
+
+    if args:
+        texto_args = "".join(args).strip()
+        prefix = re.sub(r"\D", "", texto_args)
+
+        if len(prefix) < 10:
+            await update.message.reply_text(
+                f"❌ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"❌ <b><code>║       DÍGITOS INSUFICIENTES (MÍN 10)   ║</code></b>\n"
+                f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"⚠️ <b><code>Has indicado:</code></b> <code>{html.escape(texto_args)}</code> ({len(prefix)} dígitos)\n"
+                f"📝 <b><code>Debes proporcionar al menos 10 dígitos numéricos.</code></b>\n\n"
+                f"💡 <b><code>Ejemplo:</code></b> <b><code>/gen 4150070033</code></b>",
+                parse_mode="HTML"
+            )
+            return
+
+        prefix_10 = prefix[:10]
+        cards_30 = generar_30_tarjetas(prefix_10)
+        texto_cards = "\n".join(cards_30)
+
+        keyboard = [
+            [
+                InlineKeyboardButton("⚡ Generar otras 30", callback_data=f"btn_gen_{prefix_10}"),
+                InlineKeyboardButton("🌐 Nueva URL", callback_data="btn_nueva_url")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        msg_gen = (
+            f"🎲 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🎲 <b><code>║        GENERADOR: 30 TARJETAS         ║</code></b>\n"
+            f"🎲 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"📌 <b><code>PREFIJO BASE (10 DÍGITOS):</code></b> <b><code>{html.escape(prefix_10)}</code></b>\n"
+            f"📊 <b><code>TOTAL GENERADAS:</code></b> <b><code>30 unidades</code></b>\n\n"
+            f"<pre><code>{texto_cards}</code></pre>\n\n"
+            f"💡 <b><code>Toca el bloque de código para copiarlo al portapapeles.</code></b>"
+        )
+        await update.message.reply_text(msg_gen, parse_mode="HTML", reply_markup=reply_markup)
+    else:
+        user_conversations[user_id] = {'step': 'AWAITING_GEN_BIN'}
+        await update.message.reply_text(
+            f"🎲 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🎲 <b><code>║       GENERADOR DE 30 TARJETAS        ║</code></b>\n"
+            f"🎲 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🔢 <b><code>Por favor, introduce los 10 primeros caracteres (BIN):</code></b>\n"
+            f"<code>4150070033</code>\n\n"
+            f"⚡ <b><code>El sistema generará 30 tarjetas aleatorias con algoritmo Luhn.</code></b>",
+            parse_mode="HTML"
+        )
+
 async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Comando /chk:
-    - Pide las tarjetas al usuario (de 1 a 10 con formato NUMERO|MM|AA|CVV).
+    - Pide las tarjetas al usuario (+100 tarjetas admitidas con formato NUMERO|MM|AA|CVV).
     - O toma las tarjetas directamente si se adjuntan a /chk.
     - Luego gestiona la URL guardada o pide la URL.
     """
@@ -980,13 +1037,6 @@ async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tarjetas = parsear_tarjetas_texto(texto_args) if texto_args else []
 
     if tarjetas:
-        if len(tarjetas) > 10:
-            tarjetas = tarjetas[:10]
-            await update.message.reply_text(
-                "ℹ️ <b><code>[INFO] Has indicado más de 10 tarjetas. Se comprobarán solo las primeras 10.</code></b>",
-                parse_mode="HTML"
-            )
-
         saved_url = user_manager.get_url(user_id)
         if saved_url:
             await update.message.reply_text(
@@ -1022,7 +1072,7 @@ async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 <b><code>╔════════════════════════════════════════╗</code></b>\n"
             f"💳 <b><code>║       INTRODUCE LAS TARJETAS          ║</code></b>\n"
             f"💳 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
-            f"📝 <b><code>Envía de 1 a 10 tarjetas con el formato:</code></b>\n"
+            f"📝 <b><code>Envía las tarjetas (una por línea o en lote de +100):</code></b>\n"
             f"<code>4150070033612022|03|29|458</code>",
             parse_mode="HTML"
         )
@@ -1038,6 +1088,46 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     paso = conv.get('step')
+
+    # NUEVO PASO: Cuando el usuario usó /gen sin argumentos y envía los 10 dígitos
+    if paso == 'AWAITING_GEN_BIN':
+        prefix = re.sub(r"\D", "", texto)
+        if len(prefix) < 10:
+            await update.message.reply_text(
+                f"❌ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"❌ <b><code>║       DÍGITOS INSUFICIENTES (MÍN 10)   ║</code></b>\n"
+                f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"⚠️ <b><code>Has enviado:</code></b> <code>{html.escape(texto)}</code> ({len(prefix)} dígitos)\n"
+                f"📝 <b><code>Por favor, envía al menos 10 dígitos numéricos:</code></b>\n"
+                f"<code>4150070033</code>",
+                parse_mode="HTML"
+            )
+            return
+
+        user_conversations.pop(user_id, None)
+        prefix_10 = prefix[:10]
+        cards_30 = generar_30_tarjetas(prefix_10)
+        texto_cards = "\n".join(cards_30)
+
+        keyboard = [
+            [
+                InlineKeyboardButton("⚡ Generar otras 30", callback_data=f"btn_gen_{prefix_10}"),
+                InlineKeyboardButton("🌐 Nueva URL", callback_data="btn_nueva_url")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        msg_gen = (
+            f"🎲 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🎲 <b><code>║        GENERADOR: 30 TARJETAS         ║</code></b>\n"
+            f"🎲 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"📌 <b><code>PREFIJO BASE (10 DÍGITOS):</code></b> <b><code>{html.escape(prefix_10)}</code></b>\n"
+            f"📊 <b><code>TOTAL GENERADAS:</code></b> <b><code>30 unidades</code></b>\n\n"
+            f"<pre><code>{texto_cards}</code></pre>\n\n"
+            f"💡 <b><code>Toca el bloque de código para copiarlo al portapapeles.</code></b>"
+        )
+        await update.message.reply_text(msg_gen, parse_mode="HTML", reply_markup=reply_markup)
+        return
 
     # NUEVO PASO: Cuando el usuario presionó el botón 'Nueva URL'
     if paso == 'AWAITING_NEW_URL':
@@ -1059,7 +1149,7 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
 
-    # PASO 1: Esperando las tarjetas (de 1 a 10)
+    # PASO 1: Esperando las tarjetas (sin límite estricto de 10)
     if paso == 'AWAITING_CARDS':
         tarjetas = parsear_tarjetas_texto(texto)
         if not tarjetas:
@@ -1068,18 +1158,11 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
                 f"❌ <b><code>║        FORMATO NO VÁLIDO              ║</code></b>\n"
                 f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
                 f"⚠️ <b><code>No se detectó ninguna tarjeta correcta.</code></b>\n\n"
-                f"📝 <b><code>Envía de 1 a 10 tarjetas con el formato:</code></b>\n"
+                f"📝 <b><code>Envía las tarjetas con el formato:</code></b>\n"
                 f"<code>4150070033612022|03|29|458</code>",
                 parse_mode="HTML"
             )
             return
-
-        if len(tarjetas) > 10:
-            tarjetas = tarjetas[:10]
-            await update.message.reply_text(
-                "ℹ️ <b><code>[INFO] Se han detectado más de 10 tarjetas. Se comprobarán solo las primeras 10.</code></b>",
-                parse_mode="HTML"
-            )
 
         conv['pending_cards'] = tarjetas
 
@@ -1278,6 +1361,7 @@ def main():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_start))
     app.add_handler(CommandHandler("chk", cmd_chk))
+    app.add_handler(CommandHandler("gen", cmd_gen))
     app.add_handler(CommandHandler("url", cmd_url))
     app.add_handler(CommandHandler("stop", cmd_stop))
 
