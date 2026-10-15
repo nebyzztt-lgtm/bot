@@ -1,0 +1,1366 @@
+{
+  "generado": "2026-10-15T12:20:57.350553",
+  "targets": [
+    {
+      "banco": "santander",
+      "url": "https://www.bancosantander.es"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.santander.com"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://www.bbva.es"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://www.bbva.com"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://www.bancsabadell.com"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.ing.es"
+    },
+    {
+      "banco": "santander",
+      "url": "https://bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://lr.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://tl.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://hc.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://sec.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://cmc.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://crs.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://sgp.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://goc.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://api.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://wcm.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://emj.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://sms.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://auth.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://chat.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://obpj.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://psd2.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://apps.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://blog.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://sync.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://apis.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://mail.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://mvbce.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://nlyrg.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://pripc.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://totem.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://helpy.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://mifid.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://bizum.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://fxpay.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://movil.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://iripc.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://ideas.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://hucha.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://pdscom.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://pre.wp.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://gencld.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.hc.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://vatuvi.bancosantander.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://ae.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://se.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://as.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://vc.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://sip.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://cmm.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://sso.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://wac.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://xdm.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://ww2.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://grupbancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://ww1.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://reg.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://spa.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://aec.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://mam.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://xbe.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://ems.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://vlc.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://api.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://aws.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://acc.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://uat.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://ext.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://sd1.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://int.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://www.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://vpn.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://ocs.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://chat.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://blog.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://smbs.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://labs.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://lync.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://api1.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://pt4h.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://ivsi.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://byod.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "sabadell",
+      "url": "https://th0t.bancsabadell.com",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://fbbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://m.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://ei.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://qa.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://au.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://www.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://aem.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://dae.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://web.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://info.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://chat.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://f.web.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://i.web.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://movil.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://office.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://alergiafbbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://pro.web.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://pre.web.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://ksmicms.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://netcash.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://s3.movil.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://empresas.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://descinet.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://agencias.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://beta.web.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://kstgchat.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://raditech.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://gam.movil.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://lpgtwdtcc.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://servicios.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://aem-stage.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://lwgtwdtcc.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://demo.movil.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://portalemas.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://portalemao.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://biophilia-fbbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://beta.movil.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://multiverso-fbbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "bbva",
+      "url": "https://searchbroker.bbva.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://qr.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://os.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://amp.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://api.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://mdm.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://fac.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://ww5.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://gdn.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://accp.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://test.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www5.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://emkt.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://api5.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://proxy.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://emkt1.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://os.gdn.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://mytime.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://mobile.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://sentry.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.api.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.mdm.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://api.www.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www-pre.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://os.accp.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://freeway.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://exco360.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://kanguro.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www-dvl.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://signups.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.amp.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.gdn.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://pac.mdm.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://admin360.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.accp.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://api.www5.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://api.accp.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://api.test.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "ing",
+      "url": "https://www.test.ing.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://go.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://mig.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://doc.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://apis.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://baja.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://wssca.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://tkmng.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://karmic.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://sacpei.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://apiscf.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://scftest.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.mig.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://seguros.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://crediya.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://rapidpay.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://prestamo.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.baja.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.apis.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://waf.baja.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://solicitud.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://waf.wssca.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://apiredsys.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.wssca.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://portalscf.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://fidelidad.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://rapidscore.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://waf.sacpei.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://tuprestamo.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://raconsumer.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.apiscf.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://tkmng-test.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://waf.apiscf.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://prestamo1o.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.sacpei.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://pagorecibos.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://waf.seguros.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://waf.crediya.santanderconsumer.es",
+      "ligero": "1"
+    },
+    {
+      "banco": "santander",
+      "url": "https://www.seguros.santanderconsumer.es",
+      "ligero": "1"
+    }
+  ],
+  "total_endpoints": 28,
+  "total_leads": 11,
+  "leads": [
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/particulares",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "025104071; 096324060; 109425042; 114244218; 132719428; 206280288; 279281210; 305070961; 309936919; 326298348; 370124206; 450430891; 622064633; 684234875; 748289893; 761047501; 767298316; 788221579; 814411883; 841204047; 868774161",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/banca-privada",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "014951634; 113566450; 114244218; 244721901; 264242963; 297335934; 309356218; 334042295; 346389400; 372538670; 408043474; 458975445; 554721076; 600745842; 602593929; 644124949; 647809003; 726524133; 785697734; 805424964; 814411883; 865623144; 884985961; 915123123; 943127685; 975424627",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/empresas",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "022387265; 024063842; 067568137; 114244218; 118822435; 121714847; 134634901; 166594705; 196769430; 198413805; 244269491; 378939767; 443854256; 446530435; 462294418; 544556008; 569874774; 600231041; 633812955; 638174891; 694369593; 747298957; 749423423; 814411883; 856754471; 873597213; 886279087; 908287926; 987942962; 996605484",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/autonomos",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "101794286; 114244218; 289397712; 294625405; 366170035; 408043474; 557067257; 572567137; 675770234; 792061619; 814411883; 884985961; 989574939",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "B88372024",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/aviso-legal",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "096324060; 114244218; 305070961; 326298348; 408043474; 622064633; 814411883; 884985961; 969134991",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/politica-de-privacidad",
+      "tipo": "[PAGE]",
+      "emails": "privacidad@gruposantander.es; u003eprivacidad@gruposantander.es",
+      "telefonos": "096324060; 114244218; 305070961; 326298348; 408043474; 622064633; 814411883; 884985961",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "privacidad / DPO",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/en/particulares",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "003011820; 048804420; 054084404; 090596633; 149438033; 280808751; 286626969; 310469770; 337218404; 341638292; 346559155; 541508005; 563052617; 564804684; 573639168; 627367772; 714926360; 746798246; 814411883; 814418923; 841566818; 964689611; 975116817",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "santander",
+      "dominio": "www.bancosantander.es",
+      "fuente": "https://www.bancosantander.es/en/empresas",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "019949623; 032836225; 040229196; 085388020; 090214848; 134634901; 280808751; 286626969; 346029007; 379853869; 444787908; 463814045; 474905572; 613044183; 720846876; 774206978; 774374987; 814411883; 846378052; 890965633; 919448677; 934259820; 947646408; 966790623; 969513018; 982022123",
+      "redes": "https://www.facebook.com/bancosantander; https://www.instagram.com/santander_es; https://www.youtube.com/user/bancosantander; https://x.com/santander_es",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "bbva",
+      "dominio": "www.bbva.es",
+      "fuente": "https://www.bbva.es/robots.txt",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "924776007",
+      "redes": "",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "bbva",
+      "dominio": "www.bbva.es",
+      "fuente": "https://www.bbva.es/particulares",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "012782330; 101673739; 163552404; 195058840; 204784950; 224453038; 260420650; 325813155; 326525490; 350230524; 358940376; 383420092; 516271696; 522341527; 546273889; 668862575; 765594078; 851646802; 875074396; 897121827; 912249426; 923946262; 932879665; 982179273",
+      "redes": "https://twitter.com/BBVA_espana; https://twitter.com/bbva; https://www.facebook.com/BBVAenespana/; https://www.facebook.com/bbvaespana/; https://www.linkedin.com/company/bbva-espana/; https://www.linkedin.com/company/bbva/; https://www.youtube.com/user/BBVAespana",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    },
+    {
+      "banco": "bbva",
+      "dominio": "www.bbva.es",
+      "fuente": "https://www.bbva.es/empresas",
+      "tipo": "[PAGE]",
+      "emails": "",
+      "telefonos": "012782330; 101673739; 104346244; 127181238; 204784950; 246654266; 318875861; 325813155; 337174969; 412311917; 422188435; 452568522; 668862575; 680375122; 757768450; 765594078; 782538268; 792330471; 912249426; 923946262; 932879665; 982179273",
+      "redes": "https://twitter.com/BBVA_espana; https://twitter.com/bbva; https://www.facebook.com/BBVAenespana/; https://www.facebook.com/bbvaespana/; https://www.linkedin.com/company/bbva-espana/; https://www.linkedin.com/company/bbva/; https://www.youtube.com/user/BBVAespana",
+      "personas": "",
+      "departamentos": "",
+      "cif_nif": "",
+      "iban": "",
+      "campos_json": ""
+    }
+  ],
+  "contactos_unicos": [
+    "https://twitter.com/BBVA_espana",
+    "https://twitter.com/bbva",
+    "https://www.facebook.com/BBVAenespana/",
+    "https://www.facebook.com/bancosantander",
+    "https://www.facebook.com/bbvaespana/",
+    "https://www.instagram.com/santander_es",
+    "https://www.linkedin.com/company/bbva-espana/",
+    "https://www.linkedin.com/company/bbva/",
+    "https://www.youtube.com/user/BBVAespana",
+    "https://www.youtube.com/user/bancosantander",
+    "https://x.com/santander_es",
+    "privacidad@gruposantander.es",
+    "tel:003011820",
+    "tel:012782330",
+    "tel:014951634",
+    "tel:019949623",
+    "tel:022387265",
+    "tel:024063842",
+    "tel:025104071",
+    "tel:032836225",
+    "tel:040229196",
+    "tel:048804420",
+    "tel:054084404",
+    "tel:067568137",
+    "tel:085388020",
+    "tel:090214848",
+    "tel:090596633",
+    "tel:096324060",
+    "tel:101673739",
+    "tel:101794286",
+    "tel:104346244",
+    "tel:109425042",
+    "tel:113566450",
+    "tel:114244218",
+    "tel:118822435",
+    "tel:121714847",
+    "tel:127181238",
+    "tel:132719428",
+    "tel:134634901",
+    "tel:149438033",
+    "tel:163552404",
+    "tel:166594705",
+    "tel:195058840",
+    "tel:196769430",
+    "tel:198413805",
+    "tel:204784950",
+    "tel:206280288",
+    "tel:224453038",
+    "tel:244269491",
+    "tel:244721901",
+    "tel:246654266",
+    "tel:260420650",
+    "tel:264242963",
+    "tel:279281210",
+    "tel:280808751",
+    "tel:286626969",
+    "tel:289397712",
+    "tel:294625405",
+    "tel:297335934",
+    "tel:305070961",
+    "tel:309356218",
+    "tel:309936919",
+    "tel:310469770",
+    "tel:318875861",
+    "tel:325813155",
+    "tel:326298348",
+    "tel:326525490",
+    "tel:334042295",
+    "tel:337174969",
+    "tel:337218404",
+    "tel:341638292",
+    "tel:346029007",
+    "tel:346389400",
+    "tel:346559155",
+    "tel:350230524",
+    "tel:358940376",
+    "tel:366170035",
+    "tel:370124206",
+    "tel:372538670",
+    "tel:378939767",
+    "tel:379853869",
+    "tel:383420092",
+    "tel:408043474",
+    "tel:412311917",
+    "tel:422188435",
+    "tel:443854256",
+    "tel:444787908",
+    "tel:446530435",
+    "tel:450430891",
+    "tel:452568522",
+    "tel:458975445",
+    "tel:462294418",
+    "tel:463814045",
+    "tel:474905572",
+    "tel:516271696",
+    "tel:522341527",
+    "tel:541508005",
+    "tel:544556008",
+    "tel:546273889",
+    "tel:554721076",
+    "tel:557067257",
+    "tel:563052617",
+    "tel:564804684",
+    "tel:569874774",
+    "tel:572567137",
+    "tel:573639168",
+    "tel:600231041",
+    "tel:600745842",
+    "tel:602593929",
+    "tel:613044183",
+    "tel:622064633",
+    "tel:627367772",
+    "tel:633812955",
+    "tel:638174891",
+    "tel:644124949",
+    "tel:647809003",
+    "tel:668862575",
+    "tel:675770234",
+    "tel:680375122",
+    "tel:684234875",
+    "tel:694369593",
+    "tel:714926360",
+    "tel:720846876",
+    "tel:726524133",
+    "tel:746798246",
+    "tel:747298957",
+    "tel:748289893",
+    "tel:749423423",
+    "tel:757768450",
+    "tel:761047501",
+    "tel:765594078",
+    "tel:767298316",
+    "tel:774206978",
+    "tel:774374987",
+    "tel:782538268",
+    "tel:785697734",
+    "tel:788221579",
+    "tel:792061619",
+    "tel:792330471",
+    "tel:805424964",
+    "tel:814411883",
+    "tel:814418923",
+    "tel:841204047",
+    "tel:841566818",
+    "tel:846378052",
+    "tel:851646802",
+    "tel:856754471",
+    "tel:865623144",
+    "tel:868774161",
+    "tel:873597213",
+    "tel:875074396",
+    "tel:884985961",
+    "tel:886279087",
+    "tel:890965633",
+    "tel:897121827",
+    "tel:908287926",
+    "tel:912249426",
+    "tel:915123123",
+    "tel:919448677",
+    "tel:923946262",
+    "tel:924776007",
+    "tel:932879665",
+    "tel:934259820",
+    "tel:943127685",
+    "tel:947646408",
+    "tel:964689611",
+    "tel:966790623",
+    "tel:969134991",
+    "tel:969513018",
+    "tel:975116817",
+    "tel:975424627",
+    "tel:982022123",
+    "tel:982179273",
+    "tel:987942962",
+    "tel:989574939",
+    "tel:996605484",
+    "u003eprivacidad@gruposantander.es"
+  ]
+}

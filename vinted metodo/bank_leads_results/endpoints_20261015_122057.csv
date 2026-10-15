@@ -1,0 +1,29 @@
+banco,dominio,url,status,tipo,ctype
+santander,www.bancosantander.es,https://www.bancosantander.es/robots.txt,200,[PAGE],text/plain
+santander,www.bancosantander.es,https://www.bancosantander.es/sitemap-index.xml,200,[XML],text/xml
+santander,www.bancosantander.es,https://www.bancosantander.es/particulares,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/banca-privada,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/empresas,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/autonomos,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/aviso-legal,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/politica-de-privacidad,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/es/empresas,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/es/particulares,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/en/particulares,200,[PAGE],text/html
+santander,www.bancosantander.es,https://www.bancosantander.es/en/empresas,200,[PAGE],text/html
+bbva,www.bbva.com,https://www.bbva.com/robots.txt,200,[PAGE],text/plain
+bbva,www.bbva.com,https://www.bbva.com/sitemap_index.xml,200,[XML],application/xml
+santander,www.santander.com,https://www.santander.com/robots.txt,200,[PAGE],text/plain; charset=iso-8859-1
+bbva,www.bbva.es,https://www.bbva.es/api,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/sitemap-index.xml,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/rss.xml,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/sitemap.xml,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/sitemap_index.xml,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/feed,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/api/v1,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/rss,403,[PROTEGIDO],text/html
+bbva,www.bbva.es,https://www.bbva.es/robots.txt,200,[PAGE],text/plain; charset=utf-8
+bbva,www.bbva.es,https://www.bbva.es/particulares,200,[PAGE],text/html; charset=utf-8
+bbva,www.bbva.es,https://www.bbva.es/empresas,200,[PAGE],text/html; charset=utf-8
+bbva,www.bbva.es,https://www.bbva.es/en/particulares,200,[PAGE],text/html; charset=utf-8
+bbva,www.bbva.es,https://www.bbva.es/en/empresas,200,[PAGE],text/html;charset=utf-8
