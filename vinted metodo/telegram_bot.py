@@ -1055,13 +1055,240 @@ def ejecutar_proceso_chequeo(chat_id: int, user_id: int, url: str, tarjetas: Lis
         active_jobs.pop(user_id, None)
 
 # =====================================================================
+# SCRAPPER DE LEADS WEB
+# =====================================================================
+
+def extraer_leads_de_texto(texto: str, html_content: str = "") -> dict:
+    """Extrae emails, teléfonos y enlaces de contacto/redes de un texto o código HTML."""
+    combined = (texto or "") + " \n " + (html_content or "")
+
+    emails = sorted(list(set(re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', combined))))
+    social = sorted(list(set(re.findall(r'https?://(?:wa\.me|api\.whatsapp\.com|t\.me|instagram\.com|twitter\.com|x\.com)/[a-zA-Z0-9_.-]+', combined))))
+
+    candidatos = re.findall(r'(?:\+?34[\s.-]?)?[6789]\d{2}[\s.-]?\d{3}[\s.-]?\d{3}', texto or "")
+    candidatos += re.findall(r'\+\d{1,3}[\s.-]?\d{2,4}[\s.-]?\d{3,4}[\s.-]?\d{3,4}', texto or "")
+
+    phones = []
+    for tel in set(candidatos):
+        digits = re.sub(r'\D', '', tel)
+        if 9 <= len(digits) <= 15:
+            phones.append(tel.strip())
+    phones.sort()
+
+    return {
+        'emails': emails,
+        'phones': phones,
+        'social': social,
+        'total': len(emails) + len(phones) + len(social)
+    }
+
+def scrapear_leads_url(url: str, proxy_info: Optional[dict] = None) -> dict:
+    """Carga la URL con Selenium Edge (usando proxy si está configurado) y extrae leads."""
+    driver = None
+    try:
+        driver = crear_driver(es_headless=True, proxy_info=proxy_info)
+        driver.get(url)
+        time.sleep(2.5)
+
+        texto_visible = extraer_textos_pagina(driver)
+        codigo_fuente = ""
+        try:
+            codigo_fuente = driver.page_source
+        except Exception:
+            pass
+
+        return extraer_leads_de_texto(texto_visible, codigo_fuente)
+    finally:
+        if driver:
+            cerrar_driver_seguro(driver, 1)
+
+def obtener_teclado_inicio(user_id: int) -> InlineKeyboardMarkup:
+    """Genera el teclado dinámico del panel de inicio con proxies y scrapper."""
+    proxy_activo = user_manager.get_proxy(user_id)
+    if proxy_activo:
+        btn_proxy = InlineKeyboardButton("🗑️ Quitar Proxies", callback_data="btn_delete_proxy")
+    else:
+        btn_proxy = InlineKeyboardButton("🛡️ Proxies", callback_data="btn_config_proxy")
+
+    keyboard = [
+        [btn_proxy],
+        [InlineKeyboardButton("🔍 Scrapper", callback_data="btn_scrapper_leads")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+async def enviar_panel_inicio(chat_id: int, user_id: int, context: ContextTypes.DEFAULT_TYPE, prefijo_msg: str = ""):
+    """Envía el panel principal con el teclado interactivo actualizado."""
+    proxy_activo = user_manager.get_proxy(user_id)
+    tag_proxy = f"ACTIVADO ({proxy_activo['host']})" if proxy_activo else "DESACTIVADO (Directo)"
+
+    cuerpo = (
+        f"{prefijo_msg}\n\n" if prefijo_msg else ""
+    ) + (
+        f"🤖 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+        f"🤖 <b><code>║            PANEL DE CONTROL           ║</code></b>\n"
+        f"🤖 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+        f"🛡️ <b><code>ESTADO DEL PROXY: {tag_proxy}</code></b>\n"
+        f"⚙️ <b><code>Selecciona una función a continuación:</code></b>"
+    )
+    reply_markup = obtener_teclado_inicio(user_id)
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=cuerpo,
+        parse_mode="HTML",
+        reply_markup=reply_markup
+    )
+
+async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: ContextTypes.DEFAULT_TYPE):
+    """Realiza el scrapeo de la URL y devuelve los leads encontrados en mensaje y txt."""
+    url = url.strip()
+    if not (url.startswith("http://") or url.startswith("https://")):
+        url = "https://" + url
+
+    proxy_info = user_manager.get_proxy(user_id)
+    proxy_desc = f"{proxy_info['host']}:{proxy_info['port']}" if proxy_info else "Directo (Sin proxy)"
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=(
+            f"🔍 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🔍 <b><code>║         INICIANDO SCRAPING LEADS       ║</code></b>\n"
+            f"🔍 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🌐 <b><code>URL OBJETIVO:</code></b>\n"
+            f"<code>{html.escape(url)}</code>\n\n"
+            f"🛡️ <b><code>CONEXIÓN:</code></b> <b><code>{html.escape(proxy_desc)}</code></b>\n"
+            f"⏳ <b><code>Cargando página y analizando código fuente con Selenium...</code></b>"
+        ),
+        parse_mode="HTML"
+    )
+
+    try:
+        leads = await asyncio.to_thread(scrapear_leads_url, url, proxy_info)
+    except Exception as e:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"❌ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"❌ <b><code>║         ERROR AL SCRAPEAR URL         ║</code></b>\n"
+                f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"⚠️ <code>{html.escape(str(e))}</code>"
+            ),
+            parse_mode="HTML"
+        )
+        await enviar_panel_inicio(chat_id, user_id, context)
+        return
+
+    emails = leads.get('emails', [])
+    phones = leads.get('phones', [])
+    social = leads.get('social', [])
+    total = leads.get('total', 0)
+
+    def formatear_lista(items, placeholder):
+        if not items:
+            return f"  ▫️ <i><code>{placeholder}</code></i>"
+        visibles = items[:8]
+        res = "\n".join([f"  ▫️ <code>{html.escape(x)}</code>" for x in visibles])
+        if len(items) > 8:
+            res += f"\n  ▫️ <i><code>... y {len(items)-8} más en el archivo adjunto</code></i>"
+        return res
+
+    txt_emails = formatear_lista(emails, "No se detectaron correos")
+    txt_phones = formatear_lista(phones, "No se detectaron teléfonos")
+    txt_social = formatear_lista(social, "No se detectaron redes / mensajería")
+
+    msg_leads = (
+        f"🎯 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+        f"🎯 <b><code>║     REPORTE DE SCRAPING DE LEADS      ║</code></b>\n"
+        f"🎯 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+        f"🌐 <b><code>URL:</code></b> <code>{html.escape(url)}</code>\n"
+        f"📊 <b><code>TOTAL LEADS ENCONTRADOS:</code></b> <b><code>{total}</code></b>\n\n"
+        f"📧 <b><code>CORREOS ELECTRÓNICOS ({len(emails)}):</code></b>\n"
+        f"{txt_emails}\n\n"
+        f"📞 <b><code>TELÉFONOS DETECTADOS ({len(phones)}):</code></b>\n"
+        f"{txt_phones}\n\n"
+        f"🔗 <b><code>REDES / CONTACTO DIRECTO ({len(social)}):</code></b>\n"
+        f"{txt_social}\n\n"
+        f"📁 <b><code>Generando archivo leads.txt adjunto...</code></b>"
+    )
+
+    await context.bot.send_message(chat_id=chat_id, text=msg_leads, parse_mode="HTML")
+
+    fecha_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    lineas_txt = [
+        f"============================================================",
+        f" REPORTE DE LEADS EXTRAÍDOS // SCRAPPER BOT",
+        f" URL: {url}",
+        f" Fecha: {fecha_actual}",
+        f" Total Leads: {total}",
+        f"============================================================",
+        "",
+        "--- CORREOS ELECTRÓNICOS ---"
+    ]
+    lineas_txt.extend(emails if emails else ["Ninguno"])
+    lineas_txt.append("")
+    lineas_txt.append("--- TELÉFONOS ---")
+    lineas_txt.extend(phones if phones else ["Ninguno"])
+    lineas_txt.append("")
+    lineas_txt.append("--- REDES / CONTACTO ---")
+    lineas_txt.extend(social if social else ["Ninguno"])
+    lineas_txt.append("")
+
+    bio = io.BytesIO("\n".join(lineas_txt).encode("utf-8"))
+    bio.name = "leads.txt"
+
+    reply_markup = obtener_teclado_inicio(user_id)
+    await context.bot.send_document(
+        chat_id=chat_id,
+        document=bio,
+        filename="leads.txt",
+        caption=(
+            f"📁 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"📁 <b><code>║        ARCHIVO: leads.txt             ║</code></b>\n"
+            f"📁 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"📊 <b><code>LEADS EXTRAÍDOS:</code></b> <b><code>{total}</code></b>\n"
+            f"⚡ <b><code>Descarga el archivo para exportar la base de datos.</code></b>"
+        ),
+        parse_mode="HTML",
+        reply_markup=reply_markup
+    )
+
+async def cmd_scrape(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Comando /scrape:
+    - /scrape <url>: Extrae leads de la web indicada.
+    - /scrape: Pide interactivamente la URL a scrapear.
+    """
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    args = context.args
+
+    if args:
+        url = " ".join(args).strip()
+        await procesar_scrape_url(chat_id, user_id, url, context)
+    else:
+        user_conversations[user_id] = {'step': 'AWAITING_SCRAPE_URL'}
+        await update.message.reply_text(
+            f"🔍 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"🔍 <b><code>║        SCRAPPER // EXTRACCIÓN LEADS   ║</code></b>\n"
+            f"🔍 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"📝 <b><code>Por favor, envía la URL que deseas scrapear:</code></b>\n"
+            f"<code>https://ejemplo.com/contacto</code>\n\n"
+            f"⚡ <b><code>El sistema extraerá correos, teléfonos y redes de contacto usando tu proxy.</code></b>",
+            parse_mode="HTML"
+        )
+
+# =====================================================================
 # HANDLERS DE COMANDOS DE TELEGRAM
 # =====================================================================
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando /start y bienvenida."""
     user = update.effective_user
+    user_id = user.id if user else 0
     nombre = user.first_name.upper() if user and user.first_name else "USUARIO"
+
+    proxy_activo = user_manager.get_proxy(user_id)
+    tag_proxy = f"ACTIVADO ({proxy_activo['host']})" if proxy_activo else "DESACTIVADO (Directo)"
+
     msg = (
         f"🤖 <b><code>╔════════════════════════════════════════╗</code></b>\n"
         f"🤖 <b><code>║   SISTEMA AUTOFILL // CHECKER BOT     ║</code></b>\n"
@@ -1073,18 +1300,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"▫️ <b><code>/gen &lt;10_dígitos&gt;</code></b> ➔ <b><code>Generar 30 tarjetas aleatorias</code></b>\n"
         f"▫️ <b><code>/valid</code></b> ➔ <b><code>Descargar todas las válidas en .txt</code></b>\n"
         f"▫️ <b><code>/proxy</code></b> ➔ <b><code>Configurar proxy DataImpulse / HTTP</code></b>\n"
+        f"▫️ <b><code>/scrape &lt;url&gt;</code></b> ➔ <b><code>Extraer leads y contactos de una web</code></b>\n"
         f"▫️ <b><code>/url &lt;enlace&gt;</code></b> ➔ <b><code>Guardar o cambiar tu URL</code></b>\n"
         f"▫️ <b><code>/url</code></b> ➔ <b><code>Consultar tu URL configurada</code></b>\n"
         f"▫️ <b><code>/stop</code></b> ➔ <b><code>Detener el chequeo en curso</code></b>\n\n"
-        f"🛡️ <b><code>MODO INDEPENDIENTE: Cada usuario tiene su propia URL aislada.</code></b>\n"
+        f"🛡️ <b><code>ESTADO DEL PROXY: {tag_proxy}</code></b>\n"
         f"⚙️ <b><code>ESTADO: SISTEMA EN LÍNEA Y OPERATIVO</code></b>"
     )
-    keyboard = [
-        [
-            InlineKeyboardButton("🛡️ Proxies", callback_data="btn_config_proxy")
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = obtener_teclado_inicio(user_id)
     await update.message.reply_text(msg, parse_mode="HTML", reply_markup=reply_markup)
 
 async def cmd_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1168,9 +1391,10 @@ async def cmd_proxy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🌐 <b><code>SERVIDOR:</code></b> <code>{html.escape(proxy_info['host'])}:{html.escape(proxy_info['port'])}</code>\n"
             f"👤 <b><code>USUARIO:</code></b> <code>{html.escape(proxy_info['user'] or 'N/A')}</code>\n"
             f"🔒 <b><code>AUTENTICACIÓN:</code></b> <b><code>{auth_desc}</code></b>\n"
-            f"⚡ <b><code>Listo para tus próximos /chk.</code></b>",
+            f"⚡ <b><code>Listo para tus próximos /chk y scrapeos.</code></b>",
             parse_mode="HTML"
         )
+        await enviar_panel_inicio(chat_id, user_id, context)
     else:
         proxy_actual = user_manager.get_proxy(user_id)
         keyboard = [
@@ -1439,9 +1663,16 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
             f"👤 <b><code>USUARIO:</code></b> <code>{html.escape(proxy_info['user'] or 'N/A')}</code>\n"
             f"🔒 <b><code>AUTENTICACIÓN:</code></b> <b><code>{tiene_auth}</code></b>\n"
             f"🛡️ <b><code>TIPO:</code></b> <b><code>{proxy_info['scheme'].upper()}</code></b>\n\n"
-            f"⚡ <b><code>Se aplicará automáticamente en todos tus próximos chequeos.</code></b>",
+            f"⚡ <b><code>Se aplicará automáticamente en todos tus próximos chequeos y scrapeos.</code></b>",
             parse_mode="HTML"
         )
+        await enviar_panel_inicio(chat_id, user_id, context)
+        return
+
+    # NUEVO PASO: Cuando el usuario presionó 'Scrapper' o /scrape y envía la URL a scrapear
+    if paso == 'AWAITING_SCRAPE_URL':
+        user_conversations.pop(user_id, None)
+        await procesar_scrape_url(chat_id, user_id, texto, context)
         return
 
     # NUEVO PASO: Cuando el usuario presionó el botón 'Nueva URL'
@@ -1677,7 +1908,22 @@ async def manejar_callback_acciones_valida(update: Update, context: ContextTypes
                 f"🗑️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
                 f"🗑️ <b><code>║       PROXY ELIMINADO CON ÉXITO       ║</code></b>\n"
                 f"🗑️ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
-                f"⚡ <b><code>A partir de ahora tus chequeos se realizarán con conexión directa.</code></b>"
+                f"⚡ <b><code>A partir de ahora tus chequeos y conexiones se realizarán de forma directa.</code></b>"
+            ),
+            parse_mode="HTML"
+        )
+        await enviar_panel_inicio(chat_id, user_id, context)
+    elif data == "btn_scrapper_leads":
+        user_conversations[user_id] = {'step': 'AWAITING_SCRAPE_URL'}
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"🔍 <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🔍 <b><code>║        SCRAPPER // EXTRACCIÓN LEADS   ║</code></b>\n"
+                f"🔍 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"📝 <b><code>Por favor, introduce la URL que deseas scrapear:</code></b>\n"
+                f"<code>https://ejemplo.com/contacto</code>\n\n"
+                f"⚡ <b><code>El sistema extraerá correos electrónicos, números de teléfono y enlaces de contacto/redes.</code></b>"
             ),
             parse_mode="HTML"
         )
@@ -1788,12 +2034,14 @@ def main():
     app.add_handler(CommandHandler("gen", cmd_gen))
     app.add_handler(CommandHandler("valid", cmd_valid))
     app.add_handler(CommandHandler("proxy", cmd_proxy))
+    app.add_handler(CommandHandler("scrape", cmd_scrape))
+    app.add_handler(CommandHandler("scraper", cmd_scrape))
     app.add_handler(CommandHandler("url", cmd_url))
     app.add_handler(CommandHandler("stop", cmd_stop))
 
     # Handlers para flujo interactivo de URL y botones
     app.add_handler(CallbackQueryHandler(manejar_callback_guardar, pattern=r"^save_url_"))
-    app.add_handler(CallbackQueryHandler(manejar_callback_acciones_valida, pattern=r"^(btn_nueva_url|btn_gen_|btn_config_proxy|btn_delete_proxy)"))
+    app.add_handler(CallbackQueryHandler(manejar_callback_acciones_valida, pattern=r"^(btn_nueva_url|btn_gen_|btn_config_proxy|btn_delete_proxy|btn_scrapper_leads)"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_mensaje_texto))
 
     print("[✓] Bot conectado a Telegram y escuchando mensajes...")

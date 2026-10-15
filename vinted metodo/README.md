@@ -26,10 +26,16 @@ Sistema automatizado de chequeo de pasarelas de pago y formularios web mediante 
 
 5. **Soporte de Proxies DataImpulse y HTTP**
    - Integración nativa de proxies con autenticación de usuario y contraseña en Selenium Edge.
+   - Soporte de proxy dinámico en el menú: Si no tienes proxy, muestra `🛡️ Proxies`; si ya está activo, muestra `🗑️ Quitar Proxies`.
    - Admite pegar directamente el comando `curl -x` de DataImpulse o formato estándar `usuario:password@host:port`.
-   - Botón directo **🛡️ Proxies** disponible desde el menú de inicio `/start`.
+   - Al configurar o eliminar un proxy, se despliega automáticamente el panel actualizado.
 
-6. **Estética Robótica y Modo Independiente**
+6. **Scrapper de Leads Web (`/scrape` o Botón `🔍 Scrapper`)**
+   - Extrae automáticamente **correos electrónicos**, **teléfonos** y **redes/mensajería directa** (WhatsApp, Telegram, etc.) de cualquier URL.
+   - Navega mediante Selenium Edge respetando el proxy activo configurado por el usuario.
+   - Entrega los resultados con estética robótica y adjunta un archivo exportable `leads.txt`.
+
+7. **Estética Robótica y Modo Independiente**
    - Todos los mensajes están diseñados con **tipografía monoespaciada robótica** y **negrita** (`<b><code>...</code></b>`), organizados en marcos limpios.
    - Cada usuario de Telegram dispone de su propia URL y configuración de proxy independiente en `user_data.json`.
 
@@ -39,7 +45,7 @@ Sistema automatizado de chequeo de pasarelas de pago y formularios web mediante 
 
 | Comando | Descripción |
 | :--- | :--- |
-| **`/start`** | Mensaje de bienvenida, guía de comandos y botón interactivo para **Configurar Proxies**. |
+| **`/start`** | Panel principal con botones interactivos (**Proxies** y **Scrapper**). |
 | **`/chk`** | Inicia el asistente interactivo para enviar tarjetas y comenzar el chequeo. |
 | **`/chk <tarjetas>`** | Inicia el chequeo directamente pasando las tarjetas en el mismo mensaje. |
 | **`/gen <10_dígitos>`** | Genera 30 tarjetas aleatorias con algoritmo de Luhn verificado a partir de los 10 dígitos. |
@@ -47,6 +53,8 @@ Sistema automatizado de chequeo de pasarelas de pago y formularios web mediante 
 | **`/valid`** | Envía un documento descargable `validas.txt` con todas las tarjetas válidas registradas. |
 | **`/proxy`** | Muestra el proxy actual o abre el asistente para configurarlo / eliminarlo. |
 | **`/proxy <cadena>`** | Configura directamente el proxy pasando el enlace o comando curl. |
+| **`/scrape <url>`** | Extrae leads (emails, teléfonos, redes) de la URL indicada usando tu proxy. |
+| **`/scrape`** | Asistente interactivo para introducir la URL a scrapear. |
 | **`/url <nueva_url>`** | Guarda o actualiza tu enlace de pago personal para futuros chequeos. |
 | **`/url`** | Muestra la URL de pago actualmente configurada en tu usuario. |
 | **`/stop`** | Detiene de inmediato el proceso de chequeo en curso y cierra el navegador. |
