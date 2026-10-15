@@ -1,0 +1,641 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEMON STAND 3D</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#b9c8d0;font-family:Arial,sans-serif}
+canvas{display:block}
+#crosshair{position:fixed;left:50%;top:50%;width:5px;height:5px;
+background:#fff;border:1px solid #333;border-radius:50%;z-index:5;
+transform:translate(-50%,-50%);pointer-events:none}
+#hud{position:fixed;inset:0;pointer-events:none;color:white}
+.panel{background:rgba(17,24,21,.78);border:1px solid #ffffff28;
+backdrop-filter:blur(8px);border-radius:12px;padding:13px 17px}
+#brand{position:absolute;top:20px;left:20px}
+#brand strong{font-size:20px;letter-spacing:4px}
+#brand small{display:block;color:#d7e9a2;margin-top:5px;letter-spacing:2px}
+#stats{position:absolute;top:20px;right:20px;text-align:right;min-width:160px}
+#stats b{font-size:24px;color:#e5f69c}
+#stats small{color:#ddd}
+#help{position:absolute;left:20px;bottom:20px;font-size:12px;line-height:2}
+#prompt{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);
+background:rgba(20,25,20,.9);padding:13px 22px;border-radius:8px;
+font-size:14px;white-space:nowrap;display:none}
+#prompt span{background:#f0df83;color:#222;padding:5px 9px;
+border-radius:4px;font-weight:bold;margin-right:8px}
+#message{position:absolute;top:28%;left:50%;transform:translateX(-50%);
+font-weight:bold;font-size:20px;text-shadow:0 2px 8px #000;
+text-align:center;max-width:85%;transition:opacity .3s}
+#start{position:fixed;inset:0;display:flex;align-items:center;
+justify-content:center;background:linear-gradient(#14251e99,#101812dd);
+z-index:10;color:white;text-align:center;cursor:pointer}
+#start .card{max-width:520px;padding:35px}
+#start h1{font-size:clamp(32px,6vw,58px);letter-spacing:5px;margin:0 0 10px}
+#start h1 span{color:#e7ee9b}
+#start p{line-height:1.7;color:#e0e6dd}
+#start button{padding:15px 30px;border:0;border-radius:6px;
+background:#e7ee9b;color:#172017;font-weight:900;letter-spacing:2px;
+font-size:14px;cursor:pointer;margin-top:12px}
+#bar{height:5px;background:#ffffff30;margin-top:8px;border-radius:4px;overflow:hidden}
+#progress{height:100%;width:0%;background:#e7ee9b}
+#toast{position:fixed;top:45%;left:50%;transform:translate(-50%,-50%);
+background:#17241ce8;color:white;padding:18px 24px;border-radius:10px;
+display:none;text-align:center;z-index:8;line-height:1.7}
+</style>
+</head>
+<body>
+<div id="crosshair"></div>
+<div id="hud">
+ <div id="brand" class="panel">
+  <strong>LEMON<span style="color:#e7ee9b">.</span></strong>
+  <small>FRESH JUICE · EST. 2026</small>
+ </div>
+ <div id="stats" class="panel">
+  <small>CAJA REGISTRADORA</small><br>
+  <b id="money">0,00 €</b><br>
+  <small id="sold">Zumos vendidos: 0</small>
+ </div>
+ <div id="help" class="panel">
+  <b>CONTROLES</b><br>
+  WASD · Moverse<br>
+  RATÓN · Mirar alrededor<br>
+  E · Interactuar<br>
+  ESC · Liberar ratón
+ </div>
+ <div id="prompt"><span>E</span><b id="promptText">Interactuar</b></div>
+ <div id="message"></div>
+</div>
+
+<div id="toast"></div>
+<div id="start">
+ <div class="card">
+  <h1>LEMON<span>.</span></h1>
+  <p>Tu propio puesto de limonada.<br>
+  Prepara zumos frescos, atiende a los clientes y convierte
+  una pequeña cabina en un negocio de éxito.</p>
+  <p style="font-size:12px">EXPLORA · PREPARA · SIRVE · GANA DINERO</p>
+  <button id="play">ENTRAR AL PUESTO</button>
+  <p style="font-size:11px;color:#aebcaf">Mejor con teclado y ratón.</p>
+ </div>
+</div>
+
+<script type="importmap">
+{
+ "imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js"
+ }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xb9cbd3);
+scene.fog = new THREE.Fog(0xb9cbd3, 24, 75);
+
+const camera = new THREE.PerspectiveCamera(
+ 76, innerWidth/innerHeight, .1, 150
+);
+camera.rotation.order = 'YXZ';
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+const mat = (color, roughness=.7, metalness=0) =>
+ new THREE.MeshStandardMaterial({color,roughness,metalness});
+
+const wood = mat(0x9b6940);
+const woodLight = mat(0xc18a51);
+const woodDark = mat(0x62422e);
+const cream = mat(0xf3ebd7);
+const lemonYellow = mat(0xffd83c,.38);
+const leafGreen = mat(0x4e7938);
+const metal = mat(0x858b8a,.3,.7);
+const glass = new THREE.MeshPhysicalMaterial({
+ color:0xffffff,roughness:.08,metalness:0,
+ transmission:.78,transparent:true,opacity:.42,thickness:.12
+});
+const glassOpaque = new THREE.MeshStandardMaterial({
+ color:0xf4f4db,roughness:.2,metalness:0,transparent:true,opacity:.25
+});
+const dark = mat(0x202622,.45);
+const white = mat(0xffffff,.35);
+
+function box(parent,x,y,z,w,h,d,material,cast=true){
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+ mesh.position.set(x,y,z);
+ mesh.castShadow=cast;
+ mesh.receiveShadow=true;
+ parent.add(mesh);
+ return mesh;
+}
+function sphere(parent,x,y,z,r,material,sx=1,sy=1,sz=1){
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,24,16),material);
+ mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);
+ mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);
+ return mesh;
+}
+function cylinder(parent,x,y,z,rt,rb,h,material,segments=24){
+ const mesh=new THREE.Mesh(
+  new THREE.CylinderGeometry(rt,rb,h,segments),material);
+ mesh.position.set(x,y,z);mesh.castShadow=true;
+ mesh.receiveShadow=true;parent.add(mesh);return mesh;
+}
+function line(parent,a,b,r,material){
+ const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b);
+ const delta=B.clone().sub(A);
+ const mesh=new THREE.Mesh(
+  new THREE.CylinderGeometry(r,r,delta.length(),8),material);
+ mesh.position.copy(A.add(B).multiplyScalar(.5));
+ mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
+ mesh.castShadow=true;parent.add(mesh);return mesh;
+}
+function textTexture(text,opts={}){
+ const c=document.createElement('canvas');
+ c.width=1024;c.height=512;
+ const ctx=c.getContext('2d');
+ ctx.fillStyle=opts.bg||'#f0e7cf';ctx.fillRect(0,0,1024,512);
+ if(opts.border){
+  ctx.strokeStyle=opts.border;ctx.lineWidth=18;ctx.strokeRect(18,18,988,476);
+ }
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillStyle=opts.color||'#29392a';
+ ctx.font=`900 ${opts.size||100}px Arial`;
+ ctx.fillText(text,512,opts.y||256,950);
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+ return new THREE.MeshStandardMaterial({map:tex,roughness:.8});
+}
+function plane(parent,x,y,z,w,h,material){
+ const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);
+ mesh.position.set(x,y,z);parent.add(mesh);return mesh;
+}
+
+// Cielo y luz natural
+scene.add(new THREE.HemisphereLight(0xe6f2ff,0x867253,2.0));
+const sun=new THREE.DirectionalLight(0xfff1d1,3.3);
+sun.position.set(-12,19,9);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-24;sun.shadow.camera.right=24;
+sun.shadow.camera.top=24;sun.shadow.camera.bottom=-24;
+sun.shadow.bias=-.0003;
+scene.add(sun);
+
+// Terreno
+const ground=box(scene,0,-.18,0,120,.3,120,mat(0x858c68),false);
+const concrete=mat(0xaaa99c);
+box(scene,0,.005,2,15,.08,12,concrete,false);
+
+// Textura visual del suelo con pequeñas piedras
+for(let i=0;i<300;i++){
+ const x=(Math.random()-.5)*100,z=(Math.random()-.5)*100;
+ const pebble=sphere(scene,x,-.005,z,.025+Math.random()*.055,
+  mat([0x96917c,0xb5ad97,0x777a62,0xc0b7a1][i%4]),1,.3,.8);
+ pebble.castShadow=false;
+}
+
+// Puesto: posición central. La cara de venta mira hacia -Z.
+const booth=new THREE.Group();
+booth.position.set(0,0,0);
+scene.add(booth);
+
+// Plataforma de madera
+box(booth,0,.12,0,5.7,.24,3.5,woodDark);
+for(let i=0;i<17;i++){
+ const x=-2.65+i*.33;
+ box(booth,x,.255,0,.31,.035,3.42,i%2?wood:woodLight);
+}
+
+// Patas y estructura
+for(const x of [-2.5,2.5]){
+ for(const z of [-1.42,1.42]){
+  box(booth,x,1.25,z,.19,2.3,.19,woodDark);
+  box(booth,x,2.34,z,.27,.12,.27,woodLight);
+ }
+}
+for(const z of [-1.4,1.4]){
+ box(booth,0,2.28,z,5.15,.16,.18,woodDark);
+}
+for(const x of [-2.5,2.5]){
+ box(booth,x,2.28,0,.18,.16,2.9,woodDark);
+}
+
+// Pared posterior y laterales de tablones
+for(let i=0;i<13;i++){
+ const x=-2.31+i*.385;
+ box(booth,x,1.18,1.39,.36,1.9,.10,
+  i%3===0?woodLight:wood);
+}
+for(const side of [-1,1]){
+ for(let i=0;i<7;i++){
+  const z=-1.16+i*.38;
+  box(booth,side*2.49,1.1,z,.1,1.75,.35,
+   i%2?wood:woodLight);
+ }
+}
+
+// Encimera amplia
+box(booth,0,1.57,-.05,5.55,.17,3.05,woodDark);
+box(booth,0,1.68,-.05,5.58,.09,3.08,woodLight);
+for(let i=0;i<22;i++){
+ box(booth,-2.66+i*.253,1.733,-.05,.24,.012,2.94,
+  i%3===0?wood:woodLight,false);
+}
+// Frente decorativo
+box(booth,0,.94,-1.55,5.12,1.1,.13,wood);
+for(let i=0;i<19;i++){
+ box(booth,-2.4+i*.267,.94,-1.63,.22,.91,
+  .025,i%2?woodLight:woodDark);
+}
+box(booth,0,1.47,-1.66,5.2,.12,.12,cream);
+
+// Letrero frontal
+const sign=new THREE.Mesh(
+ new THREE.BoxGeometry(3.25,.69,.08),
+ textTexture('FRESH LEMONADE',{size:105,bg:'#f4e9c9',border:'#8b6841'})
+);
+sign.position.set(0,1.04,-1.69);sign.castShadow=true;booth.add(sign);
+
+// Toldo de lona
+const canopy=new THREE.Group();booth.add(canopy);
+box(canopy,0,3.04,-.02,5.9,.16,3.5,cream);
+for(let i=0;i<9;i++){
+ const x=-2.62+i*.655;
+ box(canopy,x,2.91,-.02,.65,.18,3.5,
+  i%2===0?mat(0xe6e0c9):mat(0xc8d28b));
+ // Volante frontal
+ box(canopy,x,2.77,-1.73,.65,.34,.12,
+  i%2===0?mat(0xe6e0c9):mat(0xc8d28b));
+}
+// Bordes superiores
+box(canopy,0,3.12,-1.72,5.85,.09,.15,woodDark);
+box(canopy,0,3.12,1.69,5.85,.09,.15,woodDark);
+
+// Bombillas cálidas debajo del toldo
+for(let i=0;i<7;i++){
+ const x=-2.35+i*.78;
+ cylinder(booth,x,2.68,-1.35,.085,.085,.09,mat(0xd6c18a));
+ const bulb=new THREE.Mesh(new THREE.SphereGeometry(.075,16,12),
+  new THREE.MeshStandardMaterial({color:0xffedb5,emissive:0xffc65b,emissiveIntensity:2.2}));
+ bulb.position.set(x,2.59,-1.35);booth.add(bulb);
+ const l=new THREE.PointLight(0xffd79a,9,4,2);
+ l.position.set(x,2.55,-1.25);booth.add(l);
+}
+
+// Estantes posteriores
+box(booth,0,2.08,1.15,3.9,.1,.5,woodDark);
+box(booth,0,2.13,1.13,3.9,.06,.5,woodLight);
+for(let i=0;i<4;i++){
+ const x=-1.35+i*.9;
+ const bottle=cylinder(booth,x,2.43,1.05,.12,.15,.52,
+  new THREE.MeshPhysicalMaterial({color:[0x84a75c,0x6f967d,0xb6c6a0,0xd6c77d][i],roughness:.2,transparent:true,opacity:.85}));
+ cylinder(booth,x,2.72,1.05,.07,.09,.09,woodDark);
+ cylinder(booth,x,2.79,1.05,.055,.055,.07,mat(0x58462e));
+}
+
+// Cajón / caja registradora
+const register=new THREE.Group();booth.add(register);
+register.position.set(1.85,1.75,-.8);
+box(register,0,.13,0,.68,.27,.55,dark);
+box(register,0,.31,.04,.54,.15,.4,metal);
+const screen=box(register,0,.43,.04,.43,.17,.03,mat(0x263c36));
+screen.rotation.x=-.15;
+box(register,0,.43,-.18,.35,.025,.02,mat(0x9cc7a1));
+
+// Máquina exprimidora
+const juicer=new THREE.Group();booth.add(juicer);
+juicer.position.set(-1.55,1.77,-.48);
+box(juicer,0,.11,0,.85,.22,.7,mat(0x303936));
+box(juicer,0,.29,0,.68,.15,.58,metal);
+cylinder(juicer,0,.51,0,.23,.23,.3,metal);
+cylinder(juicer,0,.7,0,.18,.12,.12,mat(0xc7c9bc));
+sphere(juicer,0,.81,0,.12,mat(0xe1e1d3),1,.55,1);
+line(juicer,[.14,.65,0],[.35,.85,0],.035,metal);
+cylinder(juicer,.36,.8,0,.045,.045,.24,metal);
+box(juicer,0,.08,.38,.18,.08,.08,mat(0x181c19));
+
+// Tabla de cortar
+box(booth,-.1,1.79,-.68,1.0,.08,.65,woodLight);
+
+// Rodajas de limón
+function lemonSlice(parent,x,y,z,r=.17){
+ const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);
+ cylinder(g,0,0,0,r,r,.045,lemonYellow,32);
+ cylinder(g,0,0,.024,r*.82,r*.82,.006,mat(0xfff0a0),32);
+ for(let i=0;i<8;i++){
+  const a=i*Math.PI/4;
+  const s=box(g,Math.cos(a)*r*.42,Math.sin(a)*r*.42,.03,.012,r*.72,.008,white,false);
+  s.rotation.z=a;
+ }
+ return g;
+}
+lemonSlice(booth,-.25,1.85,-.68,.17);
+lemonSlice(booth,.12,1.85,-.66,.16);
+
+// Montones de limones
+for(let i=0;i<9;i++){
+ const x=-.5+(i%3)*.22;
+ const z=-.98+Math.floor(i/3)*.21;
+ const y=1.94+(Math.floor(i/3)%2)*.06;
+ const l=sphere(booth,x,y,z,.13,lemonYellow,1.18,.8,.78);
+ l.rotation.z=Math.random()*.6;
+ sphere(booth,x+.02,y+.1,z,.023,leafGreen,.5,1,.7);
+}
+
+// Caja de limones
+const crate=new THREE.Group();booth.add(crate);
+crate.position.set(1.1,1.78,.55);
+box(crate,0,.12,0,1.0,.24,.8,woodDark);
+for(let j=0;j<4;j++){
+ box(crate,0,.28,-.3+j*.2,1.02,.11,.06,woodLight);
+}
+for(let side of [-1,1]){
+ box(crate,side*.48,.26,0,.07,.26,.8,wood);
+}
+for(let i=0;i<7;i++){
+ const x=-.34+(i%4)*.22,z=-.18+Math.floor(i/4)*.28;
+ sphere(crate,x,.42,z,.13,lemonYellow,1.15,.8,.8);
+}
+
+// Vasos transparentes
+const cupMaterial=new THREE.MeshPhysicalMaterial({
+ color:0xffffff,roughness:.09,metalness:0,transmission:.75,
+ transparent:true,opacity:.36,side:THREE.DoubleSide,thickness:.05
+});
+function makeCup(parent,x,y,z,filled=true){
+ const group=new THREE.Group();group.position.set(x,y,z);parent.add(group);
+ const cup=new THREE.Mesh(
+  new THREE.CylinderGeometry(.12,.085,.3,32,1,true),cupMaterial);
+ cup.position.y=.15;cup.castShadow=true;group.add(cup);
+ cylinder(group,0,.025,0,.085,.085,.018,white,24);
+ cylinder(group,0,.12,0,.083,.075,.1,
+  mat(filled?0xe7c75d:0xffffff),24);
+ const rim=new THREE.Mesh(new THREE.TorusGeometry(.12,.012,8,32),white);
+ rim.rotation.x=Math.PI/2;rim.position.y=.3;group.add(rim);
+ if(filled){
+  const straw=cylinder(group,.04,.35,0,.012,.012,.25,mat(0xf8f4dc));
+  straw.rotation.z=-.12;
+ }
+ return group;
+}
+makeCup(booth,.6,1.79,-.7,true);
+makeCup(booth,.95,1.79,-.7,true);
+makeCup(booth,1.3,1.79,-.7,false);
+
+// Botella de agua
+cylinder(booth,-.95,1.99,-.9,.1,.12,.38,
+ new THREE.MeshPhysicalMaterial({color:0x92bdce,transparent:true,opacity:.65,roughness:.15}));
+cylinder(booth,-.95,2.2,-.9,.055,.065,.08,mat(0xe6eee8));
+
+// Cartel lateral de precios
+const priceBoard=new THREE.Mesh(new THREE.BoxGeometry(.95,.9,.09),
+ textTexture('MENU',{size:145,bg:'#344538',color:'#f5edce'}));
+priceBoard.position.set(-2.2,2.12,1.12);priceBoard.rotation.y=.05;
+booth.add(priceBoard);
+
+// Cartel frontal pequeño con precio
+const price=new THREE.Mesh(new THREE.PlaneGeometry(1.0,.43),
+ textTexture('LEMONADE  3€',{size:66,bg:'#e7e8b1',color:'#35462d'}));
+price.position.set(1.4,2.14,1.08);booth.add(price);
+
+// Barriles y cajas bajo el puesto
+for(let i=0;i<3;i++){
+ const x=-1.7+i*1.6;
+ box(booth,x,.45,.55,.9,.62,.85,i%2?woodDark:wood);
+ for(let j=0;j<4;j++){
+  box(booth,x-.32+j*.21,.45,.99,.16,.48,.025,woodLight);
+ }
+}
+
+// Entorno: árboles estilizados con geometría detallada
+function makeTree(x,z,size=1){
+ const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(size);
+ scene.add(g);
+ cylinder(g,0,1.2,0,.17,.24,2.4,mat(0x63462d));
+ for(let i=0;i<5;i++){
+  const y=1.8+i*.32;
+  const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(1.05-i*.1,2),
+   mat([0x4e6b42,0x637d4b,0x708852][i%3]));
+  crown.position.set((Math.random()-.5)*.35,y,0);
+  crown.scale.set(1.05,.95,1);crown.castShadow=true;
+  crown.receiveShadow=true;g.add(crown);
+ }
+}
+for(const [x,z,s] of [
+ [-9,-7,1.5],[9,-9,1.3],[-12,5,1.6],[12,4,1.4],
+ [-8,13,1.2],[7,14,1.5],[-16,-3,1.4],[16,-8,1.3],
+ [-19,11,1.7],[20,12,1.6]
+])makeTree(x,z,s);
+
+// Cercas rústicas al fondo
+for(const side of [-1,1]){
+ const x=side*9;
+ for(let i=0;i<20;i++){
+  const z=-8+i*.8;
+  box(scene,x,.6,z,.12,1.2,.12,woodDark);
+ }
+ for(const y of [.4,1]){
+  box(scene,x,.0+y,0,.13,.1,16,woodLight).position.set(x,y,-.4);
+ }
+}
+
+// Camino hacia el puesto
+box(scene,0,.005,-8,5,.03,14,mat(0xb6aa8c),false);
+for(let i=0;i<20;i++){
+ const pebble=sphere(scene,(Math.random()-.5)*4,-.005,-2-i*.65,
+  .05+Math.random()*.09,mat(0x918d7b),1,.2,.8);
+ pebble.castShadow=false;
+}
+
+// Arbustos y flores
+for(let i=0;i<75;i++){
+ const x=(Math.random()-.5)*35,z=(Math.random()-.5)*35;
+ if(Math.abs(x)<4&&Math.abs(z)<4)continue;
+ sphere(scene,x,.18,z,.2+Math.random()*.3,
+  mat([0x647b45,0x70884a,0x526b3b][i%3]),1,.7,1);
+}
+for(let i=0;i<50;i++){
+ const x=(Math.random()-.5)*28,z=(Math.random()-.5)*28;
+ if(Math.abs(x)<4&&Math.abs(z)<4)continue;
+ sphere(scene,x,.18,z,.045,mat(i%2?0xe5d9b6:0xd5bd79),1,.5,1);
+}
+
+// Montañas lejanas
+for(let i=0;i<16;i++){
+ const a=i/16*Math.PI*2;
+ const r=42;
+ const h=7+Math.random()*8;
+ const mountain=new THREE.Mesh(
+  new THREE.ConeGeometry(6+Math.random()*5,h,5),
+  mat(i%2?0x87978a:0x98a8a1));
+ mountain.position.set(Math.cos(a)*r,h/2-1,Math.sin(a)*r);
+ mountain.rotation.y=Math.random();
+ scene.add(mountain);
+}
+
+// Cámara de jugador
+const player={
+ x:0,z:-4.6,yaw:0,pitch:0,speed:4.3
+};
+camera.position.set(player.x,1.72,player.z);
+
+let locked=false;
+let money=0,sold=0,stage=0;
+let messageTimer=0;
+const keys={};
+const start=document.getElementById('start');
+const prompt=document.getElementById('prompt');
+const promptText=document.getElementById('promptText');
+const message=document.getElementById('message');
+const toast=document.getElementById('toast');
+
+function say(text,seconds=2.5){
+ message.textContent=text;message.style.opacity=1;messageTimer=seconds;
+}
+function showToast(text){
+ toast.innerHTML=text;toast.style.display='block';
+ setTimeout(()=>toast.style.display='none',2200);
+}
+function updateStats(){
+ document.getElementById('money').textContent=money.toFixed(2).replace('.',',')+' €';
+ document.getElementById('sold').textContent='Zumos vendidos: '+sold;
+}
+document.getElementById('play').addEventListener('click',()=>{
+ renderer.domElement.requestPointerLock();
+});
+document.addEventListener('pointerlockchange',()=>{
+ locked=document.pointerLockElement===renderer.domElement;
+ start.style.display=locked?'none':'flex';
+});
+document.addEventListener('mousemove',e=>{
+ if(!locked)return;
+ player.yaw-=e.movementX*.0021;
+ player.pitch-=e.movementY*.0021;
+ player.pitch=Math.max(-1.25,Math.min(1.25,player.pitch));
+});
+document.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'&&!e.repeat)interact();
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+
+// Punto de interacción. El jugador debe acercarse a la zona de trabajo.
+function distanceTo(x,z){return Math.hypot(player.x-x,player.z-z)}
+function interact(){
+ if(!locked)return;
+ const dWork=distanceTo(0,-2.5);
+ const dRegister=distanceTo(1.5,-2.5);
+ const dJuicer=distanceTo(-1.3,-2.2);
+ if(dWork>3.5&&dRegister>3.5&&dJuicer>3.5){
+  say('Acércate a la encimera para trabajar.',2);return;
+ }
+ if(stage===0){
+  stage=1;
+  say('1/3 · Coge un limón de la caja y prepara el zumo.',4);
+  showToast('🍋 LIMONES FRESCOS<br>Elige tu fruta en la encimera');
+ }else if(stage===1){
+  stage=2;
+  say('2/3 · Usa la exprimidora para preparar la limonada.',4);
+  showToast('⚙️ EXPRIMIDORA<br>¡Zumo recién hecho!');
+ }else if(stage===2){
+  stage=3;
+  say('3/3 · Llena un vaso y entrégalo al cliente.',4);
+  showToast('🥤 ZUMO PREPARADO<br>¡Solo falta servirlo!');
+ }else{
+  money+=3;sold++;updateStats();
+  stage=0;
+  say('¡Venta realizada! +3,00 € · ¡Un zumo fresco!',3);
+  showToast('✓ VENTA COMPLETADA<br>+3,00 €');
+ }
+}
+
+// Un pequeño cliente fuera de la ventanilla
+const customer=new THREE.Group();scene.add(customer);
+customer.position.set(0,0,-4.1);
+const skin=mat(0xc99572);
+const shirt=mat(0x587a69);
+const trousers=mat(0x353e3a);
+const head=sphere(customer,0,1.65,0,.22,skin, .85,1.08,.9);
+sphere(customer,0,1.92,-.015,.23,mat(0x5c4434),1,.45,1);
+sphere(customer,-.08,1.68,-.19,.025,mat(0x292b28));
+sphere(customer,.08,1.68,-.19,.025,mat(0x292b28));
+box(customer,0,1.12,0,.48,.67,.28,shirt);
+for(const x of [-.13,.13]){
+ line(customer,[x,.83,0],[x,.35,0],.085,trousers);
+ line(customer,[x,.35,0],[x,.09,-.04],.08,dark);
+ line(customer,[x*1.8,1.34,0],[x*2.2,1.05,-.2],.065,skin);
+}
+customer.rotation.y=Math.PI;
+
+// Manos / animación sutil
+const clock=new THREE.Clock();
+const velocity=new THREE.Vector3();
+function updatePlayer(dt){
+ if(!locked)return;
+ const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
+ const right=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
+ velocity.set(0,0,0);
+ if(keys.KeyW||keys.ArrowUp)velocity.add(forward);
+ if(keys.KeyS||keys.ArrowDown)velocity.sub(forward);
+ if(keys.KeyD||keys.ArrowRight)velocity.add(right);
+ if(keys.KeyA||keys.ArrowLeft)velocity.sub(right);
+ if(velocity.lengthSq()>0){
+  velocity.normalize().multiplyScalar(player.speed*dt);
+  player.x+=velocity.x;player.z+=velocity.z;
+ }
+ // Mantener al jugador dentro del área explorable
+ player.x=THREE.MathUtils.clamp(player.x,-18,18);
+ player.z=THREE.MathUtils.clamp(player.z,-24,15);
+ camera.position.set(player.x,1.72,player.z);
+ camera.rotation.set(player.pitch,player.yaw,0,'YXZ');
+}
+function updateInteraction(){
+ const d=distanceTo(0,-2.5);
+ const d2=distanceTo(-1.3,-2.2);
+ const d3=distanceTo(1.5,-2.5);
+ const near=Math.min(d,d2,d3)<3.5;
+ prompt.style.display=locked&&near?'block':'none';
+ const labels=[
+  'E · Coger limón',
+  'E · Exprimir limón',
+  'E · Llenar vaso y servir',
+  'E · Vender limonada'
+ ];
+ promptText.textContent=labels[stage];
+}
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ updatePlayer(dt);
+ updateInteraction();
+ if(messageTimer>0){
+  messageTimer-=dt;
+  if(messageTimer<=0)message.style.opacity=0;
+ }
+ // Movimiento suave del cliente
+ customer.position.y=Math.sin(clock.elapsedTime*1.5)*.012;
+ renderer.render(scene,camera);
+}
+animate();
+
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
+});
+</script>
+</body>
+</html>
