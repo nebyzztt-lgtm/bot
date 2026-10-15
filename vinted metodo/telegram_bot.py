@@ -13,6 +13,10 @@ import datetime
 import threading
 import subprocess
 from typing import Dict, List, Tuple, Optional
+import csv
+import urllib.parse
+import requests
+from bs4 import BeautifulSoup
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
