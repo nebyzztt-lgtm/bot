@@ -27,6 +27,16 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# Habilitar soporte de colores ANSI y UTF-8 en Windows
+os.system('')
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 # Token del Bot de Telegram proporcionado
 BOT_TOKEN = "8818995413:AAHLry4iCNQZ7T385CoVodbXQcnrkymFmKM"
 
@@ -734,7 +744,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👋 ¡Hola, {user.first_name}!\n\n"
         f"Bienvenido al Bot de Chequeo.\n\n"
         f"📌 **Comandos Disponibles:**\n"
-        f"🔹 `/chk` o `/chk <tarjeta>` : Iniciar chequeo. Si no tienes URL guardada te la pedirá.\n"
+        f"🔹 `/chk` : Iniciar chequeo. Te pedirá las tarjetas (de 1 a 10) y luego la URL si no tienes una guardada.\n"
+        f"🔹 `/chk <tarjeta(s)>` : Iniciar chequeo pasando las tarjetas directamente.\n"
         f"🔹 `/url <nueva_url>` : Guardar o cambiar tu URL personal para futuros `/chk`.\n"
         f"🔹 `/url` : Ver tu URL configurada actual.\n"
         f"🔹 `/stop` : Detener el chequeo en curso.\n\n"
@@ -784,14 +795,15 @@ async def iniciar_chequeo_usuario(update: Update, context: ContextTypes.DEFAULT_
         return
 
     if not tarjetas:
-        tarjetas = obtener_tarjetas_archivo(DEFAULT_CARDS_FILE)
-
-    if not tarjetas:
         await context.bot.send_message(
             chat_id=chat_id,
-            text="❌ No se encontraron tarjetas. Proporciona una tarjeta con `/chk <tarjeta>` o añade tarjetas en `a.txt`."
+            text="❌ No se proporcionaron tarjetas válidas para chequear."
         )
         return
+
+    # Limitar a máximo 10 tarjetas
+    if len(tarjetas) > 10:
+        tarjetas = tarjetas[:10]
 
     stop_event = threading.Event()
     active_jobs[user_id] = {
@@ -809,10 +821,10 @@ async def iniciar_chequeo_usuario(update: Update, context: ContextTypes.DEFAULT_
 
 async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Comando /chk [tarjeta]:
-    - Si no tiene URL guardada, la pide al usuario.
-    - Una vez mande el URL, ofrece guardarlo o no para la próxima.
-    - Si ya tiene URL guardada, arranca directamente usando su URL.
+    Comando /chk:
+    - Pide las tarjetas al usuario (de 1 a 10 con formato NUMERO|MM|AA|CVV).
+    - O toma las tarjetas directamente si se adjuntan a /chk.
+    - Luego gestiona la URL guardada o pide la URL.
     """
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
@@ -821,61 +833,119 @@ async def cmd_chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⏳ Ya tienes un chequeo en ejecución. Puedes detenerlo con `/stop`.")
         return
 
-    # Extraer posibles tarjetas pasadas en los argumentos
+    # Si se pasaron tarjetas en el mismo comando (/chk 4150...)
     texto_args = " ".join(context.args) if context.args else ""
-    tarjetas = parsear_tarjetas_texto(texto_args)
+    tarjetas = parsear_tarjetas_texto(texto_args) if texto_args else []
 
-    saved_url = user_manager.get_url(user_id)
+    if tarjetas:
+        if len(tarjetas) > 10:
+            tarjetas = tarjetas[:10]
+            await update.message.reply_text("ℹ️ Has indicado más de 10 tarjetas. Se comprobarán solo las primeras 10.")
 
-    if saved_url:
-        # El usuario ya tiene URL guardada
-        await update.message.reply_text(
-            f"🔍 **Usando tu URL guardada:**\n`{saved_url}`\n\n⏳ Iniciando proceso...",
-            parse_mode="Markdown"
-        )
-        await iniciar_chequeo_usuario(update, context, user_id, chat_id, saved_url, tarjetas)
+        saved_url = user_manager.get_url(user_id)
+        if saved_url:
+            await update.message.reply_text(
+                f"🔍 **Usando tu URL guardada:**\n`{saved_url}`\n\n⏳ Iniciando proceso para {len(tarjetas)} tarjeta(s)...",
+                parse_mode="Markdown"
+            )
+            await iniciar_chequeo_usuario(update, context, user_id, chat_id, saved_url, tarjetas)
+        else:
+            user_conversations[user_id] = {
+                'step': 'AWAITING_URL',
+                'pending_cards': tarjetas
+            }
+            await update.message.reply_text(
+                f"✅ {len(tarjetas)} tarjeta(s) recibida(s).\n\n"
+                f"🌐 **Por favor, introduce la URL** de la página de pago para realizar el chequeo:",
+                parse_mode="Markdown"
+            )
     else:
-        # No tiene URL guardada: pedirla
+        # No se pasaron tarjetas: pedirlas interactivamente
         user_conversations[user_id] = {
-            'step': 'AWAITING_URL',
-            'pending_cards': tarjetas
+            'step': 'AWAITING_CARDS',
+            'pending_cards': []
         }
         await update.message.reply_text(
-            "🌐 **Por favor, introduce la URL** de la página de pago para realizar el chequeo:",
+            "💳 **Por favor, envía las tarjetas a comprobar:**\n"
+            "Puedes enviar de 1 hasta 10 tarjetas (una por línea) con el formato:\n"
+            "`4150070033612022|03|29|458`",
             parse_mode="Markdown"
         )
 
 async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja mensajes de texto (para capturar la URL cuando está en espera)."""
+    """Maneja mensajes de texto cuando el bot está esperando tarjetas o la URL."""
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     texto = update.message.text.strip() if update.message.text else ""
 
     conv = user_conversations.get(user_id)
-    if not conv or conv.get('step') != 'AWAITING_URL':
+    if not conv:
         return
 
-    url = texto
-    if not (url.startswith("http://") or url.startswith("https://")):
-        url = "https://" + url
+    paso = conv.get('step')
 
-    conv['pending_url'] = url
-    conv['step'] = 'AWAITING_SAVE_CHOICE'
+    # PASO 1: Esperando las tarjetas (de 1 a 10)
+    if paso == 'AWAITING_CARDS':
+        tarjetas = parsear_tarjetas_texto(texto)
+        if not tarjetas:
+            await update.message.reply_text(
+                "❌ **Formato no válido.** No se detectó ninguna tarjeta correcta.\n\n"
+                "Por favor, envía entre 1 y 10 tarjetas con el formato:\n"
+                "`4150070033612022|03|29|458`",
+                parse_mode="Markdown"
+            )
+            return
 
-    keyboard = [
-        [
-            InlineKeyboardButton("💾 Sí, guardar enlace", callback_data="save_url_yes"),
-            InlineKeyboardButton("❌ No guardar", callback_data="save_url_no")
+        if len(tarjetas) > 10:
+            tarjetas = tarjetas[:10]
+            await update.message.reply_text("ℹ️ Se han detectado más de 10 tarjetas. Se comprobarán únicamente las primeras 10.")
+
+        conv['pending_cards'] = tarjetas
+
+        # Comprobar si ya tiene URL guardada
+        saved_url = user_manager.get_url(user_id)
+        if saved_url:
+            user_conversations.pop(user_id, None)
+            await update.message.reply_text(
+                f"✅ {len(tarjetas)} tarjeta(s) cargada(s).\n"
+                f"🔍 **Usando tu URL guardada:**\n`{saved_url}`\n\n"
+                f"⏳ Iniciando chequeo...",
+                parse_mode="Markdown"
+            )
+            await iniciar_chequeo_usuario(update, context, user_id, chat_id, saved_url, tarjetas)
+        else:
+            conv['step'] = 'AWAITING_URL'
+            await update.message.reply_text(
+                f"✅ {len(tarjetas)} tarjeta(s) recibida(s).\n\n"
+                f"🌐 **Por favor, introduce la URL** de la página de pago para realizar el chequeo:",
+                parse_mode="Markdown"
+            )
+        return
+
+    # PASO 2: Esperando la URL
+    if paso == 'AWAITING_URL':
+        url = texto
+        if not (url.startswith("http://") or url.startswith("https://")):
+            url = "https://" + url
+
+        conv['pending_url'] = url
+        conv['step'] = 'AWAITING_SAVE_CHOICE'
+
+        keyboard = [
+            [
+                InlineKeyboardButton("💾 Sí, guardar enlace", callback_data="save_url_yes"),
+                InlineKeyboardButton("❌ No guardar", callback_data="save_url_no")
+            ]
         ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        f"🔗 **URL recibida:**\n`{url}`\n\n"
-        f"¿Deseas guardar este enlace para tus próximos `/chk`?",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
-    )
+        await update.message.reply_text(
+            f"🔗 **URL recibida:**\n`{url}`\n\n"
+            f"¿Deseas guardar este enlace para tus próximos `/chk`?",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        return
 
 async def manejar_callback_guardar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Maneja la respuesta al botón de guardar URL (Sí / No)."""
