@@ -946,16 +946,19 @@ def ejecutar_proceso_chequeo(chat_id: int, user_id: int, url: str, tarjetas: Lis
                 pass
 
     try:
-        driver = crear_driver(es_headless=True)
+        proxy_info = user_manager.get_proxy(user_id)
+        driver = crear_driver(es_headless=True, proxy_info=proxy_info)
         job_info['driver'] = driver
 
         total = len(tarjetas)
+        proxy_tag = f"{proxy_info['host']}:{proxy_info['port']}" if proxy_info else "Conexión directa"
         msg_inicio = (
             f"🚀 <b><code>╔════════════════════════════════════════╗</code></b>\n"
             f"🚀 <b><code>║       INICIANDO CHEQUEO ({total} CARDS)    ║</code></b>\n"
             f"🚀 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
             f"🌐 <b><code>URL OBJETIVO:</code></b>\n"
             f"<code>{html.escape(url)}</code>\n\n"
+            f"🛡️ <b><code>PROXY:</code></b> <code>{html.escape(proxy_tag)}</code>\n"
             f"⚡ <b><code>ESTADO: Procesando tarjetas secuencialmente...</code></b>"
         )
         enviar_telegram(msg_inicio)
@@ -1069,13 +1072,20 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"▫️ <b><code>/chk &lt;tarjetas&gt;</code></b> ➔ <b><code>Chequeo rápido directo</code></b>\n"
         f"▫️ <b><code>/gen &lt;10_dígitos&gt;</code></b> ➔ <b><code>Generar 30 tarjetas aleatorias</code></b>\n"
         f"▫️ <b><code>/valid</code></b> ➔ <b><code>Descargar todas las válidas en .txt</code></b>\n"
+        f"▫️ <b><code>/proxy</code></b> ➔ <b><code>Configurar proxy DataImpulse / HTTP</code></b>\n"
         f"▫️ <b><code>/url &lt;enlace&gt;</code></b> ➔ <b><code>Guardar o cambiar tu URL</code></b>\n"
         f"▫️ <b><code>/url</code></b> ➔ <b><code>Consultar tu URL configurada</code></b>\n"
         f"▫️ <b><code>/stop</code></b> ➔ <b><code>Detener el chequeo en curso</code></b>\n\n"
         f"🛡️ <b><code>MODO INDEPENDIENTE: Cada usuario tiene su propia URL aislada.</code></b>\n"
         f"⚙️ <b><code>ESTADO: SISTEMA EN LÍNEA Y OPERATIVO</code></b>"
     )
-    await update.message.reply_text(msg, parse_mode="HTML")
+    keyboard = [
+        [
+            InlineKeyboardButton("🛡️ Proxies", callback_data="btn_config_proxy")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(msg, parse_mode="HTML", reply_markup=reply_markup)
 
 async def cmd_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1122,6 +1132,77 @@ async def cmd_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"ℹ️ <b><code>No tienes ninguna URL guardada todavía.</code></b>\n\n"
                 f"💡 <b><code>Para configurar una, escribe:</code></b>\n"
                 f"<b><code>/url &lt;tu_url&gt;</code></b>",
+                parse_mode="HTML"
+            )
+
+async def cmd_proxy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Comando /proxy:
+    - /proxy <proxy_str>: Configura el proxy directamente.
+    - /proxy: Muestra el proxy actual o pide configurarlo.
+    """
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    args = context.args
+
+    if args:
+        proxy_str = " ".join(args).strip()
+        proxy_info = parsear_proxy(proxy_str)
+        if not proxy_info:
+            await update.message.reply_text(
+                f"❌ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"❌ <b><code>║       FORMATO DE PROXY INVÁLIDO       ║</code></b>\n"
+                f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"💡 <b><code>Ejemplo:</code></b>\n"
+                f"<code>/proxy curl -x http://user:pass@gw.dataimpulse.com:823</code>",
+                parse_mode="HTML"
+            )
+            return
+
+        user_manager.set_proxy(user_id, proxy_info)
+        auth_desc = "Sí (Usuario y Contraseña)" if proxy_info.get("user") else "Sin autenticación"
+        await update.message.reply_text(
+            f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"✅ <b><code>║     PROXY CONFIGURADO CON ÉXITO       ║</code></b>\n"
+            f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🌐 <b><code>SERVIDOR:</code></b> <code>{html.escape(proxy_info['host'])}:{html.escape(proxy_info['port'])}</code>\n"
+            f"👤 <b><code>USUARIO:</code></b> <code>{html.escape(proxy_info['user'] or 'N/A')}</code>\n"
+            f"🔒 <b><code>AUTENTICACIÓN:</code></b> <b><code>{auth_desc}</code></b>\n"
+            f"⚡ <b><code>Listo para tus próximos /chk.</code></b>",
+            parse_mode="HTML"
+        )
+    else:
+        proxy_actual = user_manager.get_proxy(user_id)
+        keyboard = [
+            [
+                InlineKeyboardButton("🛡️ Configurar / Cambiar Proxy", callback_data="btn_config_proxy")
+            ]
+        ]
+        if proxy_actual:
+            keyboard.append([InlineKeyboardButton("🗑️ Eliminar Proxy", callback_data="btn_delete_proxy")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        if proxy_actual:
+            await update.message.reply_text(
+                f"🛡️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🛡️ <b><code>║        PROXY ACTUAL CONFIGURADO        ║</code></b>\n"
+                f"🛡️ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"🌐 <b><code>SERVIDOR:</code></b> <code>{html.escape(proxy_actual['host'])}:{html.escape(proxy_actual['port'])}</code>\n"
+                f"👤 <b><code>USUARIO:</code></b> <code>{html.escape(proxy_actual['user'] or 'N/A')}</code>\n"
+                f"🛡️ <b><code>TIPO:</code></b> <b><code>{proxy_actual.get('scheme', 'http').upper()}</code></b>\n\n"
+                f"💡 <b><code>Para cambiarlo o eliminarlo, pulsa los botones de abajo:</code></b>",
+                parse_mode="HTML",
+                reply_markup=reply_markup
+            )
+        else:
+            user_conversations[user_id] = {'step': 'AWAITING_PROXY'}
+            await update.message.reply_text(
+                f"🛡️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🛡️ <b><code>║       CONFIGURACIÓN DE PROXIES        ║</code></b>\n"
+                f"🛡️ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"ℹ️ <b><code>No tienes ningún proxy configurado actualmente.</code></b>\n\n"
+                f"📝 <b><code>Envía tu proxy de DataImpulse o HTTP:</code></b>\n"
+                f"<code>curl -x http://usuario:password@gw.dataimpulse.com:823</code>",
                 parse_mode="HTML"
             )
 
@@ -1331,6 +1412,38 @@ async def manejar_mensaje_texto(update: Update, context: ContextTypes.DEFAULT_TY
         await update.message.reply_text(msg_gen, parse_mode="HTML", reply_markup=reply_markup)
         return
 
+    # NUEVO PASO: Cuando el usuario presionó 'Proxies' o /proxy y envía la cadena de proxy
+    if paso == 'AWAITING_PROXY':
+        proxy_info = parsear_proxy(texto)
+        if not proxy_info:
+            await update.message.reply_text(
+                f"❌ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"❌ <b><code>║       FORMATO DE PROXY INVÁLIDO       ║</code></b>\n"
+                f"❌ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"⚠️ <b><code>No se pudo extraer host y puerto del texto enviado.</code></b>\n\n"
+                f"💡 <b><code>Ejemplo admitido (puedes pegar el curl de DataImpulse tal cual):</code></b>\n"
+                f"<code>curl -x http://9a6dc7641e60bd9ad507:242b4b6ca788f743@gw.dataimpulse.com:823</code>",
+                parse_mode="HTML"
+            )
+            return
+
+        user_manager.set_proxy(user_id, proxy_info)
+        user_conversations.pop(user_id, None)
+
+        tiene_auth = "Sí (Usuario y Contraseña)" if proxy_info.get("user") else "Sin autenticación"
+        await update.message.reply_text(
+            f"✅ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+            f"✅ <b><code>║     PROXY CONFIGURADO CON ÉXITO       ║</code></b>\n"
+            f"✅ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+            f"🌐 <b><code>SERVIDOR:</code></b> <code>{html.escape(proxy_info['host'])}:{html.escape(proxy_info['port'])}</code>\n"
+            f"👤 <b><code>USUARIO:</code></b> <code>{html.escape(proxy_info['user'] or 'N/A')}</code>\n"
+            f"🔒 <b><code>AUTENTICACIÓN:</code></b> <b><code>{tiene_auth}</code></b>\n"
+            f"🛡️ <b><code>TIPO:</code></b> <b><code>{proxy_info['scheme'].upper()}</code></b>\n\n"
+            f"⚡ <b><code>Se aplicará automáticamente en todos tus próximos chequeos.</code></b>",
+            parse_mode="HTML"
+        )
+        return
+
     # NUEVO PASO: Cuando el usuario presionó el botón 'Nueva URL'
     if paso == 'AWAITING_NEW_URL':
         url = texto
@@ -1520,6 +1633,54 @@ async def manejar_callback_acciones_valida(update: Update, context: ContextTypes
             parse_mode="HTML",
             reply_markup=reply_markup
         )
+    elif data == "btn_config_proxy":
+        user_conversations[user_id] = {'step': 'AWAITING_PROXY'}
+        proxy_actual = user_manager.get_proxy(user_id)
+
+        info_actual = ""
+        if proxy_actual:
+            info_actual = (
+                f"\n📌 <b><code>PROXY ACTUAL CONFIGURADO:</code></b>\n"
+                f"<code>{html.escape(proxy_actual.get('host'))}:{html.escape(proxy_actual.get('port'))}</code>\n\n"
+            )
+
+        keyboard = [
+            [
+                InlineKeyboardButton("🗑️ Eliminar Proxy Actual", callback_data="btn_delete_proxy")
+            ]
+        ] if proxy_actual else []
+        reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"🛡️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🛡️ <b><code>║       CONFIGURACIÓN DE PROXIES        ║</code></b>\n"
+                f"🛡️ <b><code>╚════════════════════════════════════════╝</code></b>\n"
+                f"{info_actual}"
+                f"📝 <b><code>Por favor, envía tu proxy de DataImpulse o HTTP.</code></b>\n\n"
+                f"💡 <b><code>Formatos admitidos (puedes pegar tal cual):</code></b>\n"
+                f"▫️ <code>curl -x http://usuario:password@gw.dataimpulse.com:823</code>\n"
+                f"▫️ <code>http://usuario:password@gw.dataimpulse.com:823</code>\n"
+                f"▫️ <code>gw.dataimpulse.com:823:usuario:password</code>\n\n"
+                f"⚡ <b><code>El sistema extraerá automáticamente host, puerto y credenciales.</code></b>"
+            ),
+            parse_mode="HTML",
+            reply_markup=reply_markup
+        )
+    elif data == "btn_delete_proxy":
+        user_manager.delete_proxy(user_id)
+        user_conversations.pop(user_id, None)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"🗑️ <b><code>╔════════════════════════════════════════╗</code></b>\n"
+                f"🗑️ <b><code>║       PROXY ELIMINADO CON ÉXITO       ║</code></b>\n"
+                f"🗑️ <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
+                f"⚡ <b><code>A partir de ahora tus chequeos se realizarán con conexión directa.</code></b>"
+            ),
+            parse_mode="HTML"
+        )
 
 async def cmd_valid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1626,12 +1787,13 @@ def main():
     app.add_handler(CommandHandler("chk", cmd_chk))
     app.add_handler(CommandHandler("gen", cmd_gen))
     app.add_handler(CommandHandler("valid", cmd_valid))
+    app.add_handler(CommandHandler("proxy", cmd_proxy))
     app.add_handler(CommandHandler("url", cmd_url))
     app.add_handler(CommandHandler("stop", cmd_stop))
 
     # Handlers para flujo interactivo de URL y botones
     app.add_handler(CallbackQueryHandler(manejar_callback_guardar, pattern=r"^save_url_"))
-    app.add_handler(CallbackQueryHandler(manejar_callback_acciones_valida, pattern=r"^(btn_nueva_url|btn_gen_)"))
+    app.add_handler(CallbackQueryHandler(manejar_callback_acciones_valida, pattern=r"^(btn_nueva_url|btn_gen_|btn_config_proxy|btn_delete_proxy)"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_mensaje_texto))
 
     print("[✓] Bot conectado a Telegram y escuchando mensajes...")
