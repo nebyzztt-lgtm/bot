@@ -18,6 +18,8 @@ import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 
+from scraper import run_scraper, ReconScraper
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -1087,7 +1089,32 @@ def extraer_leads_de_texto(texto: str, html_content: str = "") -> dict:
     }
 
 def scrapear_leads_url(url: str, proxy_info: Optional[dict] = None) -> dict:
-    """Carga la URL con Selenium Edge (usando proxy si está configurado) y extrae leads."""
+    """Extrae leads y endpoints de la URL usando el scraper multipaso con reintentos y fallback a Selenium."""
+    proxy_str = None
+    if proxy_info:
+        u = proxy_info.get("user")
+        p = proxy_info.get("password")
+        h = proxy_info.get("host")
+        port = proxy_info.get("port")
+        sch = proxy_info.get("scheme", "http")
+        if u and p:
+            proxy_str = f"{sch}://{u}:{p}@{h}:{port}"
+        elif h and port:
+            proxy_str = f"{sch}://{h}:{port}"
+
+    try:
+        resultado = run_scraper(url, proxy=proxy_str)
+        return {
+            'emails': resultado.get('emails', []),
+            'phones': resultado.get('phones', []),
+            'social': resultado.get('social', []),
+            'endpoints': resultado.get('endpoints', []),
+            'files': resultado.get('files', {}),
+            'total': len(resultado.get('emails', [])) + len(resultado.get('phones', [])) + len(resultado.get('social', [])),
+        }
+    except Exception as e:
+        registrar_log(1, "", "WARN", f"Scraper avanzado falló ({e}), activando fallback con Selenium...")
+
     driver = None
     try:
         driver = crear_driver(es_headless=True, proxy_info=proxy_info)
@@ -1101,10 +1128,14 @@ def scrapear_leads_url(url: str, proxy_info: Optional[dict] = None) -> dict:
         except Exception:
             pass
 
-        return extraer_leads_de_texto(texto_visible, codigo_fuente)
+        leads = extraer_leads_de_texto(texto_visible, codigo_fuente)
+        leads['endpoints'] = []
+        leads['files'] = {}
+        return leads
     finally:
         if driver:
             cerrar_driver_seguro(driver, 1)
+
 
 def obtener_teclado_inicio(user_id: int) -> InlineKeyboardMarkup:
     """Genera el teclado dinámico del panel de inicio con proxies y scrapper."""
@@ -1143,7 +1174,7 @@ async def enviar_panel_inicio(chat_id: int, user_id: int, context: ContextTypes.
     )
 
 async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: ContextTypes.DEFAULT_TYPE):
-    """Realiza el scrapeo de la URL y devuelve los leads encontrados en mensaje y txt."""
+    """Realiza el escaneo y reconocimiento de la URL, devolviendo leads, endpoints y archivos CSV."""
     url = url.strip()
     if not (url.startswith("http://") or url.startswith("https://")):
         url = "https://" + url
@@ -1155,12 +1186,15 @@ async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: Con
         chat_id=chat_id,
         text=(
             f"🔍 <b><code>╔════════════════════════════════════════╗</code></b>\n"
-            f"🔍 <b><code>║         INICIANDO SCRAPING LEADS       ║</code></b>\n"
+            f"🔍 <b><code>║        INICIANDO RECON & SCRAPING      ║</code></b>\n"
             f"🔍 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
             f"🌐 <b><code>URL OBJETIVO:</code></b>\n"
             f"<code>{html.escape(url)}</code>\n\n"
             f"🛡️ <b><code>CONEXIÓN:</code></b> <b><code>{html.escape(proxy_desc)}</code></b>\n"
-            f"⏳ <b><code>Cargando página y analizando código fuente con Selenium...</code></b>"
+            f"⏳ <b><code>Fase 1: Escaneo de rutas y endpoints...</code></b>\n"
+            f"⚡ <b><code>Fase 2: Búsqueda de APIs en JavaScript...</code></b>\n"
+            f"📄 <b><code>Fase 3: Paginación estructurada (urlencode)...</code></b>\n"
+            f"🎯 <b><code>Fase 4: Extracción de leads y guardado de CSVs...</code></b>"
         ),
         parse_mode="HTML"
     )
@@ -1184,7 +1218,9 @@ async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: Con
     emails = leads.get('emails', [])
     phones = leads.get('phones', [])
     social = leads.get('social', [])
-    total = leads.get('total', 0)
+    endpoints = leads.get('endpoints', [])
+    files = leads.get('files', {})
+    total = leads.get('total', len(emails) + len(phones) + len(social))
 
     def formatear_lista(items, placeholder):
         if not items:
@@ -1192,7 +1228,7 @@ async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: Con
         visibles = items[:8]
         res = "\n".join([f"  ▫️ <code>{html.escape(x)}</code>" for x in visibles])
         if len(items) > 8:
-            res += f"\n  ▫️ <i><code>... y {len(items)-8} más en el archivo adjunto</code></i>"
+            res += f"\n  ▫️ <i><code>... y {len(items)-8} más en los archivos adjuntos</code></i>"
         return res
 
     txt_emails = formatear_lista(emails, "No se detectaron correos")
@@ -1204,6 +1240,7 @@ async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: Con
         f"🎯 <b><code>║     REPORTE DE SCRAPING DE LEADS      ║</code></b>\n"
         f"🎯 <b><code>╚════════════════════════════════════════╝</code></b>\n\n"
         f"🌐 <b><code>URL:</code></b> <code>{html.escape(url)}</code>\n"
+        f"📡 <b><code>ENDPOINTS DETECTADOS:</code></b> <b><code>{len(endpoints)}</code></b>\n"
         f"📊 <b><code>TOTAL LEADS ENCONTRADOS:</code></b> <b><code>{total}</code></b>\n\n"
         f"📧 <b><code>CORREOS ELECTRÓNICOS ({len(emails)}):</code></b>\n"
         f"{txt_emails}\n\n"
@@ -1211,11 +1248,60 @@ async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: Con
         f"{txt_phones}\n\n"
         f"🔗 <b><code>REDES / CONTACTO DIRECTO ({len(social)}):</code></b>\n"
         f"{txt_social}\n\n"
-        f"📁 <b><code>Generando archivo leads.txt adjunto...</code></b>"
+        f"📁 <b><code>Enviando archivos generados a continuación...</code></b>"
     )
 
     await context.bot.send_message(chat_id=chat_id, text=msg_leads, parse_mode="HTML")
 
+    reply_markup = obtener_teclado_inicio(user_id)
+
+    # Enviar archivos generados si existen
+    leads_csv = files.get("leads_csv")
+    endpoints_csv = files.get("endpoints_csv")
+    summary_txt = files.get("summary_txt")
+
+    if leads_csv and os.path.exists(leads_csv):
+        try:
+            with open(leads_csv, "rb") as fp_leads:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=fp_leads,
+                    filename=os.path.basename(leads_csv),
+                    caption="📊 <b><code>Archivo de Leads CSV (Emails, Teléfonos, Redes)</code></b>",
+                    parse_mode="HTML"
+                )
+        except Exception as e:
+            registrar_log(1, "", "WARN", f"Error enviando leads CSV: {e}")
+
+    if endpoints_csv and os.path.exists(endpoints_csv):
+        try:
+            with open(endpoints_csv, "rb") as fp_ep:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=fp_ep,
+                    filename=os.path.basename(endpoints_csv),
+                    caption=f"📡 <b><code>Endpoints y Rutas CSV ({len(endpoints)} descubiertos)</code></b>",
+                    parse_mode="HTML"
+                )
+        except Exception as e:
+            registrar_log(1, "", "WARN", f"Error enviando endpoints CSV: {e}")
+
+    if summary_txt and os.path.exists(summary_txt):
+        try:
+            with open(summary_txt, "rb") as fp_sum:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=fp_sum,
+                    filename=os.path.basename(summary_txt),
+                    caption="📑 <b><code>Resumen consolidado en formato de texto</code></b>",
+                    parse_mode="HTML",
+                    reply_markup=reply_markup
+                )
+                return
+        except Exception as e:
+            registrar_log(1, "", "WARN", f"Error enviando summary TXT: {e}")
+
+    # Fallback si no hay archivos en disco
     fecha_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lineas_txt = [
         f"============================================================",
@@ -1239,7 +1325,6 @@ async def procesar_scrape_url(chat_id: int, user_id: int, url: str, context: Con
     bio = io.BytesIO("\n".join(lineas_txt).encode("utf-8"))
     bio.name = "leads.txt"
 
-    reply_markup = obtener_teclado_inicio(user_id)
     await context.bot.send_document(
         chat_id=chat_id,
         document=bio,

@@ -1,14 +1,7 @@
 {
   "8791932410": {
-    "url": "https://pay.mychoice2pay.com/680ecf46ea9940fa8ad76183cc7a23a9",
-    "updated_at": "2026-10-15T10:07:33.497484",
-    "proxy_updated_at": "2026-10-15T10:42:30.951916",
-    "proxy": {
-      "scheme": "http",
-      "host": "gw.dataimpulse.com",
-      "port": "823",
-      "user": "9a6dc7641e60bd9ad507",
-      "pass": "242b4b6ca788f743"
-    }
+    "url": "https://pay.mychoice2pay.com/57d1dc61f3214bb6ad2c8a1683537a07",
+    "updated_at": "2026-10-19T12:59:53.957146",
+    "proxy_updated_at": "2026-10-15T10:42:30.951916"
   }
 }
